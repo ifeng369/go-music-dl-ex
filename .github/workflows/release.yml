@@ -126,7 +126,6 @@ jobs:
             dist/fnos/*.fpk
             dist/fnos/*.sha256
             src/plugin/plugin.js
-            src/plugin/mint-plugin.js
       - name: Sync FnDepot source manifest
         shell: bash
         env:
