@@ -1,0 +1,17 @@
+#!/bin/bash
+# Package-specific service definition. Sourced by main and installer.
+
+APP_DIR="${TRIM_APPDEST}"
+DATA_DIR="${TRIM_PKGVAR}"
+PORT="${TRIM_SERVICE_PORT:-18080}"
+
+LOG_FILE="${DATA_DIR}/${TRIM_APPNAME}.log"
+PID_FILE="${DATA_DIR}/${TRIM_APPNAME}.pid"
+
+DNAME="${TRIM_APPNAME}"
+SVC_CWD="${DATA_DIR}"
+SVC_BACKGROUND=y
+SVC_WRITE_PID=y
+SVC_QUIET=y
+
+SERVICE_COMMAND="${APP_DIR}/musicdl-server -addr :${PORT} -data ${DATA_DIR}"

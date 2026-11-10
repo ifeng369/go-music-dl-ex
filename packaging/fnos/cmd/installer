@@ -1,0 +1,40 @@
+#!/bin/bash
+
+CMD_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "${CMD_DIR}/common"
+. "${CMD_DIR}/service-setup"
+
+service_preinst() {
+    prepare_dirs
+}
+
+service_postinst() {
+    prepare_dirs
+    start_daemon
+}
+
+service_preuninst() {
+    stop_daemon
+}
+
+service_postuninst() {
+    :
+}
+
+service_preupgrade() {
+    stop_daemon
+}
+
+service_postupgrade() {
+    fix_data_ownership
+    start_daemon
+}
+
+service_preconfig() {
+    stop_daemon
+}
+
+service_postconfig() {
+    fix_data_ownership
+    start_daemon
+}

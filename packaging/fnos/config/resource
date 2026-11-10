@@ -1,0 +1,9 @@
+{
+  "port-config": {
+    "protocol-file": "musicdl-ex.sc"
+  },
+  "data-share": {
+    "shares": []
+  },
+  "systemd-unit": {}
+}

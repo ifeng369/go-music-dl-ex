@@ -1,0 +1,33 @@
+#!/bin/bash
+
+CMD_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "${CMD_DIR}/common"
+. "${CMD_DIR}/service-setup"
+
+case "$1" in
+    start)
+        if daemon_status; then
+            install_log "$DNAME is already running"
+            exit 0
+        fi
+        start_daemon
+        exit $?
+        ;;
+    stop)
+        stop_daemon
+        exit $?
+        ;;
+    status)
+        if daemon_status; then
+            echo "$DNAME is running"
+            exit 0
+        else
+            echo "$DNAME is not running"
+            exit 3
+        fi
+        ;;
+    *)
+        echo "usage: $0 {start|stop|status}" >&2
+        exit 1
+        ;;
+esac

@@ -1,0 +1,165 @@
+#!/bin/bash
+# Shared helpers for the MusicDL Ex fnOS package lifecycle.
+
+SVC_WAIT_TIMEOUT="${SVC_WAIT_TIMEOUT:-20}"
+
+install_log() {
+    local msg="$*"
+    if [ -z "$msg" ]; then
+        while IFS= read -r line; do install_log "$line"; done
+    else
+        echo -e "$(date +'%Y/%m/%d %H:%M:%S')\t$msg" >&2
+    fi
+}
+
+call_func() {
+    local fn="$1" status
+    if [ "$(type -t "$fn" 2>/dev/null)" = "function" ]; then
+        install_log "Begin $fn"
+        "$fn" 2>&1 | while IFS= read -r line; do install_log "$line"; done
+        status=${PIPESTATUS[0]}
+        if [ "$status" -ne 0 ]; then
+            install_log "End $fn (failed with exit code $status)"
+            return "$status"
+        fi
+        install_log "End $fn"
+    fi
+    return 0
+}
+
+prepare_dirs() {
+    [ -n "$DATA_DIR" ] || return 1
+    mkdir -p "$DATA_DIR"
+    if [ "$(id -u)" = "0" ] && [ -n "${TRIM_USERNAME}" ] && [ "${TRIM_USERNAME}" != "root" ]; then
+        chown -R "${TRIM_USERNAME}:${TRIM_GROUPNAME:-$TRIM_USERNAME}" "$DATA_DIR" 2>/dev/null || true
+    fi
+}
+
+fix_data_ownership() {
+    [ -n "$DATA_DIR" ] && [ -d "$DATA_DIR" ] || return 0
+    if [ "$(id -u)" = "0" ] && [ -n "${TRIM_USERNAME}" ] && [ "${TRIM_USERNAME}" != "root" ]; then
+        chown -R "${TRIM_USERNAME}:${TRIM_GROUPNAME:-$TRIM_USERNAME}" "$DATA_DIR" 2>/dev/null || true
+    fi
+}
+
+daemon_status() {
+    [ -n "$PID_FILE" ] && [ -r "$PID_FILE" ] || return 1
+    local pid exe
+    pid="$(cat "$PID_FILE" 2>/dev/null)"
+    if [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1; then
+        # Guard against a stale PID that was reused by an unrelated process.
+        exe="$(readlink -f "/proc/${pid}/exe" 2>/dev/null || true)"
+        if [ -z "$exe" ] || [ "$exe" = "${APP_DIR}/musicdl-server" ]; then
+            return 0
+        fi
+    fi
+    rm -f "$PID_FILE" >/dev/null 2>&1 || true
+    return 1
+}
+
+wait_for_status() {
+    local want="$1" counter="${2:-20}" pid="$3"
+    while [ "$counter" -gt 0 ]; do
+        if [ -n "$pid" ]; then
+            if [ "$want" = "0" ] && kill -0 "$pid" >/dev/null 2>&1; then return 0; fi
+            if [ "$want" = "1" ] && ! kill -0 "$pid" >/dev/null 2>&1; then return 0; fi
+        else
+            daemon_status
+            [ "$?" -eq "$want" ] && return 0
+        fi
+        counter=$((counter - 1))
+        sleep 1
+    done
+    return 1
+}
+
+start_daemon() {
+    if daemon_status; then
+        install_log "$DNAME is already running"
+        return 0
+    fi
+    prepare_dirs || return 1
+    [ -n "$SVC_CWD" ] && cd "$SVC_CWD" 2>/dev/null || true
+    : >>"$LOG_FILE" 2>/dev/null || true
+    install_log "Starting $DNAME: $SERVICE_COMMAND"
+    # SERVICE_COMMAND is a trusted, package-relative command line.
+    # shellcheck disable=SC2086
+    $SERVICE_COMMAND >>"$LOG_FILE" 2>&1 &
+    local pid=$!
+    echo "$pid" >"$PID_FILE"
+    if wait_for_status 0 10 "$pid"; then
+        return 0
+    fi
+    install_log "$DNAME failed to start; see $LOG_FILE"
+    return 1
+}
+
+stop_daemon() {
+    if ! daemon_status; then
+        return 0
+    fi
+    local pid
+    pid="$(cat "$PID_FILE" 2>/dev/null)"
+    install_log "Stopping $DNAME ($pid)"
+    kill -TERM "$pid" >/dev/null 2>&1 || true
+    if ! wait_for_status 1 "$SVC_WAIT_TIMEOUT" "$pid"; then
+        kill -KILL "$pid" >/dev/null 2>&1 || true
+    fi
+    rm -f "$PID_FILE" >/dev/null 2>&1 || true
+    return 0
+}
+
+install_init() {
+    install_log "===> install_init (${TRIM_APPNAME} ${TRIM_APPVER})"
+    call_func service_preinst || exit $?
+    exit 0
+}
+
+install_callback() {
+    install_log "===> install_callback"
+    call_func service_postinst || exit $?
+    exit 0
+}
+
+uninstall_init() {
+    install_log "===> uninstall_init"
+    call_func service_preuninst || exit $?
+    exit 0
+}
+
+uninstall_callback() {
+    install_log "===> uninstall_callback"
+    call_func service_postuninst || exit $?
+    if [ "${wizard_delete_data}" = "true" ]; then
+        install_log "Removing package data (wizard_delete_data=true)"
+        [ -n "$DATA_DIR" ] && [ -d "$DATA_DIR" ] && find "$DATA_DIR" -mindepth 1 -delete 2>/dev/null || true
+        [ -n "$TRIM_PKGHOME" ] && [ -d "$TRIM_PKGHOME" ] && find "$TRIM_PKGHOME" -mindepth 1 -delete 2>/dev/null || true
+        [ -n "$TRIM_PKGETC" ] && [ -d "$TRIM_PKGETC" ] && find "$TRIM_PKGETC" -mindepth 1 -delete 2>/dev/null || true
+    fi
+    exit 0
+}
+
+upgrade_init() {
+    install_log "===> upgrade_init ${TRIM_OLD_APPVER:-?} -> ${TRIM_APPVER}"
+    call_func service_preupgrade || exit $?
+    exit 0
+}
+
+upgrade_callback() {
+    install_log "===> upgrade_callback"
+    call_func fix_data_ownership || exit $?
+    call_func service_postupgrade || exit $?
+    exit 0
+}
+
+config_init() {
+    install_log "===> config_init"
+    call_func service_preconfig || exit $?
+    exit 0
+}
+
+config_callback() {
+    install_log "===> config_callback"
+    call_func service_postconfig || exit $?
+    exit 0
+}

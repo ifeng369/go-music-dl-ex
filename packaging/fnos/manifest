@@ -1,0 +1,16 @@
+appname         = musicdl-ex
+version         = 0.0.0
+display_name    = MusicDL Ex
+platform        = x86
+maintainer      = go-music-dl-ex contributors
+maintainer_url  = https://github.com/guohuiyuan/go-music-dl
+distributor     = go-music-dl-ex contributors
+distributor_url = https://github.com/guohuiyuan/go-music-dl
+desktop_uidir   = ui
+desktop_applaunchname = musicdl-ex.Application
+service_port    = 18080
+ctl_stop        = true
+beta            = no
+desc            = 聚合多平台音乐搜索与播放，内置 Web 播放器，同时提供 MusicFree 插件 API。
+source          = thirdparty
+checksum        =

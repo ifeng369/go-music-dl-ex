@@ -1,0 +1,24 @@
+# Dependencies and build output
+node_modules/
+src/server/musicdl-server
+src/server/musicdl-server.exe
+*.exe
+*.test
+dist/fnos/
+dist/linux-amd64/
+dist/linux-arm64/
+
+# Runtime data (settings.db, cookies, downloads)
+src/server/devdata/
+src/server/data/
+data/
+
+# The upstream clone is kept locally for seamless upgrades. CI clones it when
+# it is absent, because a nested .git directory cannot be committed.
+/source/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

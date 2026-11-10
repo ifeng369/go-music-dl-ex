@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GO_VERSION: "1.25.1"
+  NODE_VERSION: "22"
+  FNPACK_VERSION: "1.2.3"
+  FNPACK_SHA256: "54b97fa7b70968c4d05c79840f5daeff508957d0bb2062fdb0376d00d9615c93"
+  UPSTREAM_REPO: "https://github.com/guohuiyuan/go-music-dl.git"
+  UPSTREAM_REF: "main"
+
+jobs:
+  release:
+    name: Build web, binaries and fnOS packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Fetch upstream core
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f source/go.mod ]; then
+            git clone --depth 1 --branch "${UPSTREAM_REF}" "${UPSTREAM_REPO}" source
+          fi
+          git -C source --no-pager log -1 --oneline
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: src/server/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          echo "value=${version}" >> "$GITHUB_OUTPUT"
+          echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Build web UI
+        working-directory: src/web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Test server
+        working-directory: src/server
+        run: go test ./...
+
+      - name: Build Linux binaries
+        working-directory: src/server
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          BUILD_TIME: ${{ steps.version.outputs.build_time }}
+        run: |
+          set -euo pipefail
+          ldflags="-s -w -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME}"
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "${ldflags}" -o ../../dist/linux-amd64/musicdl-server .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "${ldflags}" -o ../../dist/linux-arm64/musicdl-server .
+          file ../../dist/linux-amd64/musicdl-server ../../dist/linux-arm64/musicdl-server
+
+      - name: Install fnpack
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            "https://static2.fnnas.com/fnpack/fnpack-${FNPACK_VERSION}-linux-amd64" \
+            --output "${RUNNER_TEMP}/fnpack"
+          printf '%s  %s\n' "${FNPACK_SHA256}" "${RUNNER_TEMP}/fnpack" | sha256sum --check
+          chmod 755 "${RUNNER_TEMP}/fnpack"
+
+      - name: Build fnOS packages
+        shell: bash
+        env:
+          FNPACK: ${{ runner.temp }}/fnpack
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.value }}"
+          bash packaging/fnos/build.sh "${version}" amd64 dist/linux-amd64/musicdl-server dist/fnos
+          bash packaging/fnos/build.sh "${version}" arm64 dist/linux-arm64/musicdl-server dist/fnos
+
+      - name: Inspect package layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          for fpk in dist/fnos/*.fpk; do
+            echo "== ${fpk}"
+            tar -tzf "${fpk}" | sort
+            tar -xzOf "${fpk}" manifest | grep -E '^(appname|version|platform|checksum|service_port)'
+          done
+          ls -lh dist/fnos
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MusicDL Ex ${{ github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/fnos/*.fpk
+            dist/fnos/*.sha256
+            src/plugin/plugin.js

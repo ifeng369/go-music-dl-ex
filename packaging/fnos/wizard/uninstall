@@ -1,0 +1,27 @@
+[
+  {
+    "stepTitle": "卸载 MusicDL Ex",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "卸载应用不会影响已下载到其它目录的文件。"
+      },
+      {
+        "type": "radio",
+        "field": "wizard_delete_data",
+        "label": "是否同时删除应用数据（设置、Cookie、下载记录）？",
+        "initValue": "false",
+        "options": [
+          {
+            "label": "保留应用数据，便于以后重新安装",
+            "value": "false"
+          },
+          {
+            "label": "删除应用数据（不可恢复）",
+            "value": "true"
+          }
+        ]
+      }
+    ]
+  }
+]
