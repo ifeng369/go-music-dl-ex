@@ -61,3 +61,11 @@ func serveIndex(w http.ResponseWriter, r *http.Request, sub fs.FS) {
 	}
 	_, _ = w.Write(data)
 }
+
+//go:embed plugin.js
+var pluginJS []byte
+
+// PluginJS returns the embedded MusicFree plugin source.
+func PluginJS() []byte {
+	return pluginJS
+}
