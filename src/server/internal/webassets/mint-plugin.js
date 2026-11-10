@@ -11,6 +11,7 @@
 const { EVENT_NAMES, request, on, send } = globalThis.lx
 
 const DEFAULT_BASE = "http://127.0.0.1:8080";
+const DEFAULT_TOKEN = "";
 const SOURCE = "musicdl"
 const QUALITIES = ["128k", "320k", "flac"]
 
@@ -29,7 +30,7 @@ function httpGet(path, params) {
   const query = buildQuery(params)
   const url = getBase() + path + (query ? "?" + query : "")
   return new Promise((resolve, reject) => {
-    request(url, { method: "GET", headers: { Accept: "application/json" } }, (err, resp) => {
+    request(url, { method: "GET", headers: { Accept: "application/json", ...(DEFAULT_TOKEN ? { Authorization: "Bearer " + DEFAULT_TOKEN } : {}) } }, (err, resp) => {
       if (err) return reject(err)
       const status = resp && resp.statusCode
       let body = resp && resp.body
@@ -133,7 +134,8 @@ function musicUrl(source, musicInfo, quality) {
   if (info.extra && Object.keys(info.extra).length) {
     params.extra = JSON.stringify(info.extra)
   }
-  return Promise.resolve(getBase() + "/api/stream?" + buildQuery(params))
+  const accessToken = DEFAULT_TOKEN ? "&access_token=" + encodeURIComponent(DEFAULT_TOKEN) : "";
+  return Promise.resolve(getBase() + "/api/stream?" + buildQuery(params) + accessToken)
 }
 
 function lyric(source, musicInfo) {

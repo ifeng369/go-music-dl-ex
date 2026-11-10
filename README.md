@@ -219,3 +219,29 @@ cd src/server && go mod tidy && go build .
 - [guohuiyuan/go-music-dl](https://github.com/guohuiyuan/go-music-dl) 与 `music-lib`
 - [maotoumao/MusicFree](https://github.com/maotoumao/MusicFree) 插件协议
 - [algerkong/AlgerMusicPlayer](https://github.com/algerkong/AlgerMusicPlayer) Web UI 参考
+## 插件与源使用补充
+
+### MusicFree 插件
+- 在飞牛应用设置页点击“下载 MusicFree 插件”，或直接访问 `http://<NAS>:18080/plugin.js`。
+- 打开 MusicFree：设置 → 插件管理 → 从本地安装，选择 `plugin.js`。
+- 插件设置中填写 API 地址（从飞牛应用下载的插件会自动写入当前访问地址），并填写音乐库用户名和密码。
+- 支持搜索、歌单/专辑/歌手、播放、歌词、封面；播放失败会自动换源，换源结果会持久化。
+
+### Mint-Music 插件（LX 格式）
+- 在飞牛应用设置页点击“下载 Mint-Music 插件”，或直接访问 `http://<NAS>:18080/mint-plugin.js`。
+- 打开 Mint-Music：设置 → 音源插件管理 → 导入本地插件，选择 `mint-plugin.js`。
+- 音源名称显示为 `MusicDL`。
+- 从飞牛应用下载时会自动注入当前登录账号的 Session Token；插件请求带 `Authorization: Bearer`，受账号权限约束。
+- 支持搜索、播放、歌词、封面。
+
+### FnDepot 应用源
+- 在 FnDepot 中添加应用源：`https://github.com/ifeng369/go-music-dl-ex`
+- 刷新后安装 `MusicDL Ex`，会自动匹配 x86 / arm 架构。
+- 仓库根目录的 `fnpack.json` 是 FnDepot 源清单；每次推送 `v*` tag 后，GitHub Actions 会自动更新版本、FPK 下载地址、SHA256 和文件大小。
+- 首次添加需要能访问 GitHub；网络受限时请在 FnDepot 中配置加速。
+
+### 音乐源与账号
+- 设置页可为网易云、QQ 音乐、酷狗、酷我、咪咕等音源配置 Cookie。
+- 酷我账号收藏歌单已支持在“我的歌单”中显示。
+- 用户管理、下载目录、本地音乐、收藏与播放记录均在应用内管理，数据按账号隔离。
+

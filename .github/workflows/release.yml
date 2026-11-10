@@ -29,7 +29,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          persist-credentials: true
           fetch-depth: 0
 
       - name: Fetch upstream core
@@ -126,3 +126,26 @@ jobs:
             dist/fnos/*.fpk
             dist/fnos/*.sha256
             src/plugin/plugin.js
+            src/plugin/mint-plugin.js
+      - name: Sync FnDepot source manifest
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+          ASSETS_DIR: ${{ github.workspace }}/dist/fnos
+          CHANGELOG: MusicDL Ex ${{ steps.version.outputs.value }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+          node scripts/update-fnpack.mjs
+          git add fnpack.json
+          if git diff --cached --quiet; then
+            echo "fnpack.json unchanged"
+            exit 0
+          fi
+          git commit -m "chore(fndepot): sync ${TAG} into fnpack.json"
+          git push origin main
