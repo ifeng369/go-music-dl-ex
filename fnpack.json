@@ -27,6 +27,23 @@
       "is_docker": false,
       "service_port": "18080",
       "releases": {
+        "1.0.4": {
+          "changelog": "MusicDL Ex 1.0.4",
+          "updated_at": "2026-11-10T12:29:32.852Z",
+          "os_min_version": "1.1.8",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/ifeng369/go-music-dl-ex/releases/download/v1.0.4/musicdl-ex-1.0.4-fnos-amd64.fpk",
+              "sha256": "1c89a50905a320279d6b8b6c784e817af32c745c95ca1b716e173e2b16e349af",
+              "size": 9577429
+            },
+            "arm": {
+              "download_url": "https://github.com/ifeng369/go-music-dl-ex/releases/download/v1.0.4/musicdl-ex-1.0.4-fnos-arm64.fpk",
+              "sha256": "27be4ab69d77f189c72a370247ecb61413a2bcdf738cf31794afb324a9cb0ebf",
+              "size": 9019815
+            }
+          }
+        },
         "1.0.3": {
           "changelog": "飞牛应用入口改为浏览器新标签打开；内置 MusicFree 与 Mint-Music 插件；支持多用户、本地音乐与下载记录。",
           "updated_at": "2026-11-10T00:00:00Z",
