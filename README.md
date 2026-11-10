@@ -234,6 +234,14 @@ cd src/server && go mod tidy && go build .
 - 从飞牛应用下载时会自动注入当前登录账号的 Session Token；插件请求带 `Authorization: Bearer`，受账号权限约束。
 - 支持搜索、播放、歌词、封面。
 
+### 每个用户独立的插件地址
+- 登录后打开「设置」，页面会显示当前账号的专属插件地址：
+  `http://<NAS>:18080/plugin/u/<个人Token>/mint-plugin.js`
+- 该地址在插件下载时直接写入个人 Token，**无需登录即可下载**，适合把插件发给对应账号用户。
+- 每个账号的 Token 不同；地址等同于账号凭证，请勿公开分享。
+- 设置页支持「复制」和「重置插件 Token」；重置后旧地址立即失效，需要重新下载插件。
+- 该 Token 同时用于插件接口鉴权（`Authorization: Bearer <Token>`），只拥有对应用户的权限。
+
 ### FnDepot 应用源
 - 在 FnDepot 中添加应用源：`https://github.com/ifeng369/go-music-dl-ex`
 - 刷新后安装 `MusicDL Ex`，会自动匹配 x86 / arm 架构。
