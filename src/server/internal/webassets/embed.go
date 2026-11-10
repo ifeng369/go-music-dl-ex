@@ -69,3 +69,11 @@ var pluginJS []byte
 func PluginJS() []byte {
 	return pluginJS
 }
+
+//go:embed mint-plugin.js
+var mintPluginJS []byte
+
+// MintPluginJS returns the embedded Mint-Music plugin source.
+func MintPluginJS() []byte {
+	return mintPluginJS
+}

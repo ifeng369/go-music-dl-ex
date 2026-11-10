@@ -292,7 +292,7 @@ onMounted(async () => {
         <li>安装 MusicFree 客户端（Android / 桌面端）。</li>
         <li>在插件管理中选择「从本地安装」，导入项目 Release 中的 <code>plugin.js</code>。</li>
         <li>打开插件设置，将 API 地址填写为 <code>{{ apiBase }}</code>。</li>
-        <li>也可以直接 <a class="text-button" href="/plugin.js" download="musicdl-plugin.js">下载内置插件</a>，安装后在插件设置中填写上面的 API 地址。</li>
+        <li>也可以直接 <a class="text-button" href="/plugin.js" download="musicdl-plugin.js">下载 MusicFree 插件</a> · <a class="text-button" href="/mint-plugin.js" download="mint-plugin.js">下载 Mint-Music 插件</a>，安装后在插件设置中填写上面的 API 地址。</li>
         <li>回到首页即可搜索各平台音乐。</li>
       </ol>
     </section>

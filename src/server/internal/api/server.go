@@ -40,6 +40,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/healthz", s.handleHealth)
 	s.mux.HandleFunc("GET /plugin.js", s.handlePluginJS)
+	s.mux.HandleFunc("GET /mint-plugin.js", s.handleMintPluginJS)
 	s.mux.HandleFunc("GET /api/version", s.handleHealth)
 	s.mux.HandleFunc("GET /api/sources", s.handleSources)
 	s.mux.HandleFunc("GET /api/detect", s.handleDetect)
