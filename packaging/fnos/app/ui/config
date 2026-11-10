@@ -4,7 +4,7 @@
       "title": "MusicDL Ex",
       "desc": "聚合音乐搜索、播放与 MusicFree 接口",
       "icon": "images/{0}.png",
-      "type": "iframe",
+      "type": "url",
       "port": "18080",
       "protocol": "http",
       "url": "/",
