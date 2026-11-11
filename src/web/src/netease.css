@@ -1265,7 +1265,7 @@ kbd {
 }
 
 .player-cover.spinning img {
-  animation: spin 26s linear infinite;
+  animation: vinyl-spin 18s linear infinite;
 }
 
 .player-info {
@@ -2636,7 +2636,6 @@ kbd {
   object-fit: cover;
   border-radius: 0;
   clip-path: none;
-  animation: spin 26s linear infinite;
 }
 
 .now-stage .now-art .now-art-fallback {
@@ -2681,4 +2680,32 @@ kbd {
   position: relative;
   z-index: 1;
   color: rgba(236, 65, 65, 0.55);
+}
+
+/* Vinyl rotation. The animation is always declared and only its play state is
+   toggled, so pressing pause freezes the disc at its current angle instead of
+   snapping back to zero. */
+@keyframes vinyl-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.player-bar .player-cover img,
+.now-stage .now-art img {
+  animation-name: vinyl-spin;
+  animation-duration: 18s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: paused;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.now-stage .now-art img {
+  animation-duration: 26s;
+}
+
+.player-bar .player-cover.spinning img,
+.now-stage .now-art.spinning img {
+  animation-play-state: running;
 }
