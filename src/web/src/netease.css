@@ -2281,16 +2281,23 @@ kbd {
 
   .player-progress {
     position: absolute;
-    top: -1px;
+    top: 0;
     left: 0;
     right: 0;
     bottom: auto;
-    height: 3px;
+    height: 14px;
     align-items: center;
     max-width: none;
     padding: 0 10px;
     margin: 0;
     gap: 0;
+    z-index: 3;
+  }
+
+  .player-progress .t-slider {
+    height: 14px;
+    display: flex;
+    align-items: center;
   }
 
   .player-progress .time {
@@ -2298,11 +2305,11 @@ kbd {
   }
 
   .player-progress .t-slider__rail {
-    height: 2px;
+    height: 3px;
   }
 
   .player-progress .t-slider__track {
-    height: 2px;
+    height: 3px;
   }
 
   .player-extra {
@@ -2312,7 +2319,7 @@ kbd {
   .player-cover {
     width: 40px;
     height: 40px;
-    border-radius: 6px;
+    border-radius: 50%;
   }
 
   .queue-panel {
@@ -3015,4 +3022,9 @@ a,
     padding: 0 10px;
     font-size: 12px;
   }
+}
+
+/* The progress knob must paint above the rail and the bar's top edge. */
+.player-progress .t-slider__button {
+  z-index: 3;
 }
