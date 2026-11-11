@@ -29,18 +29,18 @@
       "releases": {
         "1.0.26": {
           "changelog": "MusicDL Ex 1.0.26",
-          "updated_at": "2026-11-11T13:04:10.230Z",
+          "updated_at": "2026-11-11T13:05:09.596Z",
           "os_min_version": "1.1.8",
           "packages": {
             "x86": {
               "download_url": "https://github.com/ifeng369/go-music-dl-ex/releases/download/v1.0.26/musicdl-ex-1.0.26-fnos-amd64.fpk",
-              "sha256": "c20157ab6f9a3393d319b6837251f40007e64da58584d54e5ad50667c74f8979",
-              "size": 9666057
+              "sha256": "5ab90636257a921bd15370c9f906e3614b228473b570fe432ad8167589ef6645",
+              "size": 9666034
             },
             "arm": {
               "download_url": "https://github.com/ifeng369/go-music-dl-ex/releases/download/v1.0.26/musicdl-ex-1.0.26-fnos-arm64.fpk",
-              "sha256": "d8efbe7e69b8519edc4cee4ba0570c3aa2f2faa7071d64a5dbbc54988469cb7b",
-              "size": 9099922
+              "sha256": "3a6c3ba586c9f82b0a9e6e9f096263470886efbf22dcdfef70645cfb9a901886",
+              "size": 9100065
             }
           }
         },
