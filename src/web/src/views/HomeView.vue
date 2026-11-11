@@ -4,6 +4,7 @@ import { api } from '../api'
 import { loadMeta, meta, sourceName } from '../meta'
 import SectionHeader from '../components/SectionHeader.vue'
 import SheetGrid from '../components/SheetGrid.vue'
+import { library } from '../library'
 
 const loading = ref(true)
 const error = ref('')
@@ -36,6 +37,50 @@ const heroCover = computed(() => {
   const first = (data.value.recommend || [])[0]
   return first ? first.artwork : ''
 })
+
+const allSheets = computed(() => {
+  const list = []
+  const seen = new Set()
+  const push = (item, fallbackSource) => {
+    if (!item || !item.id) return
+    const source = item.source || fallbackSource || ''
+    const key = `${source}:${item.id}`
+    if (seen.has(key)) return
+    seen.add(key)
+    list.push({ ...item, source })
+  }
+  for (const group of data.value.recommendGroups || []) {
+    for (const item of group.data || []) push(item, group.source)
+  }
+  for (const item of data.value.recommend || []) push(item, item.source)
+  return list
+})
+
+function daySeed() {
+  const now = new Date()
+  return Number(`${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`)
+}
+
+function pickSheets(pool, count, seed) {
+  if (!pool.length) return []
+  const total = pool.length
+  let state = seed % 2147483647
+  if (state <= 0) state += 2147483646
+  const picked = []
+  const used = new Set()
+  while (picked.length < Math.min(count, total) && used.size < total) {
+    state = (state * 16807) % 2147483647
+    const index = state % total
+    if (used.has(index)) continue
+    used.add(index)
+    picked.push(pool[index])
+  }
+  return picked
+}
+
+const dailySheets = computed(() => pickSheets(allSheets.value, 8, daySeed()))
+const randomSheets = computed(() => pickSheets(allSheets.value, 8, daySeed() * 7 + 17))
+const likedSheets = computed(() => (library.sheetFavorites || []).slice(0, 12))
 
 function cacheCategories(items) {
   for (const item of items || []) {
@@ -113,7 +158,7 @@ onMounted(load)
         <h1>一个入口，听见所有平台</h1>
         <p>网易云、QQ音乐、酷狗、酷我、咪咕、汽水、B站……<br />搜索、歌单、排行榜与歌词，一处搞定。</p>
         <div class="hero-actions">
-          <a href="#categories" class="primary-button"><i class="ri-play-circle-line"></i> 开始探索</a>
+          <router-link :to="{ name: 'recommend' }" class="primary-button"><i class="ri-play-circle-line"></i> 开始探索</router-link>
           <span class="hero-stat">
             <strong>{{ meta.sources.length || '—' }}</strong>
             <span>个音乐源在线</span>
@@ -131,43 +176,27 @@ onMounted(load)
       <button class="text-button" @click="load">重试</button>
     </div>
 
-    <section id="categories" class="section home-categories">
-      <SectionHeader title="分类歌单" subtitle="按心情与场景发现音乐，可切换不同音源" />
-      <div v-if="categorySources.length" class="category-source-tabs">
-        <button
-          v-for="source in categorySources"
-          :key="source.id"
-          class="category-source-tab"
-          :class="{ active: categorySource === source.id }"
-          @click="selectCategory(source.id)"
-        >
-          {{ sourceName(source.id) }}
-        </button>
-      </div>
-      <div v-if="loading || categoryLoading" class="chip-row">
-        <span v-for="i in 18" :key="i" class="chip skeleton-chip"></span>
-      </div>
-      <div v-else-if="categoryError" class="notice error compact">
-        <i class="ri-error-warning-line"></i>
-        {{ categoryError }}
-        <button class="text-button" @click="selectCategory(categorySource)">重试</button>
-      </div>
-      <div v-else-if="categoryItems.length" class="chip-row">
-        <router-link
-          v-for="category in categoryItems.slice(0, 48)"
-          :key="category.source + category.id + category.name"
-          :to="{ name: 'category', params: { source: category.source }, query: { id: category.id || '', name: category.name } }"
-          class="chip"
-          :title="sourceName(category.source)"
-        >
-          <i class="ri-play-list-2-line"></i>
-          {{ category.name }}
-        </router-link>
-      </div>
-      <div v-else class="empty-inline">该音源暂无可用分类</div>
+    <section class="section home-daily">
+      <SectionHeader title="每日推荐" subtitle="每天为你换一批推荐歌单" />
+      <SheetGrid :items="dailySheets" :loading="loading" empty-text="暂无每日推荐" />
     </section>
 
-    <template v-if="loading">
+    <section class="section">
+      <SectionHeader
+        title="你喜欢听"
+        subtitle="来自你收藏的歌单"
+        :to="{ name: 'my-playlists' }"
+        more-text="收藏歌单"
+      />
+      <SheetGrid :items="likedSheets" :loading="loading" empty-text="还没有收藏歌单，去歌单页点收藏吧" />
+    </section>
+
+    <section class="section">
+      <SectionHeader title="随便听听" subtitle="从全部推荐里随机挑一批" />
+      <SheetGrid :items="randomSheets" :loading="loading" empty-text="暂无推荐歌单" />
+    </section>
+
+<template v-if="loading">
       <section class="section">
         <div class="section-header">
           <div class="section-title"><h2>推荐歌单</h2></div>
@@ -184,8 +213,8 @@ onMounted(load)
         <SectionHeader
           :title="`${sourceName(group.source)} 推荐`"
           :subtitle="`来自${sourceName(group.source)}的热门歌单`"
-          :more-text="`查看全部 ${group.data.length} 个`"
-          :to="{ name: 'search', query: { q: sourceName(group.source), type: 'sheet', source: group.source } }"
+          :more-text="'全部 ' + allSheets.length + ' 个'"
+          :to="{ name: 'recommend' }"
         />
         <SheetGrid :items="group.data.slice(0, 12)" empty-text="暂无推荐歌单" />
       </section>

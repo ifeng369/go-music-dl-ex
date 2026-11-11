@@ -3101,3 +3101,10 @@ a,
 .player-bar {
   z-index: 80;
 }
+
+/* Phones start straight with the recommendation modules. */
+@media (max-width: 900px) {
+  .home-view .hero {
+    display: none;
+  }
+}

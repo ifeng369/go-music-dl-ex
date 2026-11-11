@@ -8,6 +8,7 @@ const routes = [
   { path: '/toplist', name: 'toplist', component: () => import('./views/TopListView.vue') },
   { path: '/artist/:source/:name', name: 'artist', component: () => import('./views/ArtistView.vue') },
   { path: '/category/:source', name: 'category', component: () => import('./views/CategoryView.vue') },
+  { path: '/recommend', name: 'recommend', component: () => import('./views/RecommendView.vue') },
   { path: '/local', name: 'local', component: () => import('./views/LocalMusicView.vue'), meta: { requiresAuth: true } },
   { path: '/my', name: 'my-playlists', component: () => import('./views/MyPlaylistsView.vue'), meta: { requiresAuth: true } },
   { path: '/my/:id', name: 'my-playlist', component: () => import('./views/LocalPlaylistView.vue'), meta: { requiresAuth: true } },
