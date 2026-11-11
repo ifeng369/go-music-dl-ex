@@ -2785,3 +2785,86 @@ kbd {
     margin-left: 0;
   }
 }
+
+/* --------------------------------------------------- icon boxes on iOS */
+/* Every round icon button is a fixed square with the glyph centred by flex.
+   Grid centring plus font icons rendered an ellipse on iOS (the box was
+   stretched and the glyph sat off-centre). */
+.icon-button {
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 1;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* The row play button stays hover-only (the row itself is the play target),
+   but it must be a square flex box so the disc and glyph stay centred. */
+.row-play {
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 1;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.song-row:hover .row-play {
+  display: inline-flex;
+}
+
+/* Geometric centring: an extra nudge pushed the triangle visibly right. */
+.play-button i[class*="ri-play"],
+.play-badge i[class*="ri-play"],
+.playlist-play i[class*="ri-play"],
+.row-play i[class*="ri-play"] {
+  margin-left: 0;
+  transform: none;
+}
+
+.icon-button i,
+.row-play i {
+  display: block;
+  margin: 0;
+  line-height: 1;
+}
+
+/* iOS keeps :hover after a tap, which left a grey pill behind the skip
+   buttons. Only draw hover feedback for real pointers. */
+@media (hover: none) {
+  .icon-button:hover,
+  .player-bar .icon-button:hover {
+    background: transparent;
+    color: inherit;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Same size for every transport button so the row is evenly spaced. */
+  .player-bar.now-open .player-controls .icon-button,
+  .player-bar.now-open .player-controls .prev-button,
+  .player-bar.now-open .player-controls .next-button {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 24px;
+  }
+}
+
+/* Default artwork inside the sheet detail header. */
+.detail-cover .playlist-cover-fallback {
+  width: 100%;
+  height: 100%;
+  font-size: 42px;
+}

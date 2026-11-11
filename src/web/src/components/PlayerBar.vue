@@ -39,14 +39,9 @@ function onVolume(value) {
   player.setVolume(Number(value))
 }
 
-function toggleNowPlaying(event) {
+function openNowPlaying() {
   if (!current.value) return
-  if (event && event.target && event.target.closest('button, input, a, .range, .t-slider')) return
   state.showNowPlaying = !state.showNowPlaying
-}
-
-function toggleNowPlayingForce() {
-  if (current.value) state.showNowPlaying = !state.showNowPlaying
 }
 
 function toggleLike() {
@@ -55,13 +50,13 @@ function toggleLike() {
 </script>
 
 <template>
-  <footer class="player-bar" :class="{ clickable: Boolean(current), 'now-open': state.showNowPlaying }" @click="toggleNowPlaying">
+  <footer class="player-bar" :class="{ clickable: Boolean(current), 'now-open': state.showNowPlaying }">
     <div class="player-track">
-      <button class="player-cover" :class="{ spinning: state.playing }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" @click="toggleNowPlayingForce">
+      <button class="player-cover" :class="{ spinning: state.playing }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" @click.stop="openNowPlaying">
         <img v-if="current && current.artwork" :src="current.artwork" :alt="current.title" />
         <i v-else class="ri-music-2-line"></i>
       </button>
-      <div class="player-info">
+      <div class="player-info" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" @click.stop="openNowPlaying">
         <div class="player-title" :title="current ? current.title : ''">
           {{ current ? current.title : '还没有播放音乐' }}
         </div>

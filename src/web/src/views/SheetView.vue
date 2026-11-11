@@ -137,7 +137,7 @@ watch(() => route.fullPath, load)
     <header class="detail-head">
       <div class="detail-cover">
         <img v-if="sheet.artwork" :src="sheet.artwork" :alt="sheet.title" />
-        <i v-else class="ri-music-2-line"></i>
+        <div v-else class="playlist-cover-fallback"><i class="ri-music-2-line"></i></div>
       </div>
       <div class="detail-info">
         <span class="badge">{{ type === 'album' ? '专辑' : type === 'toplist' ? '排行榜' : '歌单' }} · {{ sourceName(route.params.source) }}</span>

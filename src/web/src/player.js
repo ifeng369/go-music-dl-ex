@@ -117,7 +117,16 @@ function parseLrc(raw) {
       lines.push({ time: minutes * 60 + seconds + fraction, text })
     }
   }
-  return lines.sort((a, b) => a.time - b.time)
+  lines.sort((a, b) => a.time - b.time)
+  // Some providers return each line twice (merged lyric sources), which showed
+  // up as every lyric repeated back to back.
+  const deduped = []
+  for (const entry of lines) {
+    const prev = deduped[deduped.length - 1]
+    if (prev && prev.text === entry.text) continue
+    deduped.push(entry)
+  }
+  return deduped
 }
 
 function syncLyricIndex() {
