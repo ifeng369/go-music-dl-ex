@@ -228,51 +228,6 @@ onBeforeUnmount(() => {
           </div>
         </section>
       </div>
-
-      <transition name="slide-right">
-        <aside v-if="state.showQueue" class="now-queue">
-          <header class="now-queue-head">
-            <div>
-              <h3>播放列表</h3>
-              <p>{{ state.queue.length }} 首歌曲</p>
-            </div>
-            <div class="now-queue-actions">
-              <button class="icon-button" title="清空播放列表" @click="player.clearQueue()">
-                <i class="ri-delete-bin-6-line"></i>
-              </button>
-              <button class="icon-button" title="关闭播放列表" @click="state.showQueue = false">
-                <i class="ri-close-line"></i>
-              </button>
-            </div>
-          </header>
-          <div class="now-queue-list">
-            <div
-              v-for="(song, index) in state.queue"
-              :key="song.id + index"
-              class="now-queue-row"
-              :class="{ active: index === state.index }"
-              @click="player.playAt(index)"
-            >
-              <span class="now-queue-index">
-                <i v-if="index === state.index && state.playing" class="ri-volume-up-line"></i>
-                <template v-else>{{ String(index + 1).padStart(2, '0') }}</template>
-              </span>
-              <img v-if="song.artwork || song.cover" class="now-queue-cover" :src="song.artwork || song.cover" alt="" loading="lazy" /><span v-else class="now-queue-cover now-queue-cover-fallback"><i class="ri-music-2-line"></i></span><div class="now-queue-meta">
-                <div class="now-queue-title">{{ song.title }}</div>
-                <div class="now-queue-artist">{{ song.artist || '未知歌手' }}</div>
-              </div>
-              <span class="now-queue-time">{{ formatDuration(song.duration) }}</span>
-              <button class="now-queue-remove" title="移除" @click="removeAt(index, $event)">
-                <i class="ri-close-line"></i>
-              </button>
-            </div>
-            <div v-if="!state.queue.length" class="now-queue-empty">
-              <i class="ri-play-list-2-line"></i>
-              <p>播放列表是空的</p>
-            </div>
-          </div>
-        </aside>
-      </transition>
     </div>
   </transition>
 </template>
