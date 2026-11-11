@@ -507,6 +507,7 @@ function clearQueue() {
   fallbackState = null
   fallbackBusy = false
   altToken += 1
+  syncNativeState(true)
 }
 
 audio.addEventListener('loadedmetadata', () => {
@@ -617,6 +618,76 @@ watch(() => state.index, () => persistQueue(true))
 audio.addEventListener('timeupdate', persistQueueProgress)
 audio.addEventListener('pause', () => persistQueue(true))
 window.addEventListener('pagehide', () => persistQueue(true))
+
+// ---------------------------------------------------------- Android shell
+// The WebView shell mirrors the current track into a system MediaSession so the
+// lock screen, notification shade and Bluetooth controls can drive playback.
+let lastNativeSync = 0
+let lastNativeKey = ''
+
+function publishNativeState() {
+  if (typeof window === 'undefined' || !window.MusicDLNative) return
+  const song = current.value
+  if (!song) {
+    try {
+      window.MusicDLNative.clearMediaState()
+    } catch {
+      // Browser build: nothing to do.
+    }
+    return
+  }
+  try {
+    window.MusicDLNative.updateMediaState(JSON.stringify({
+      title: song.title || '',
+      artist: song.artist || '',
+      album: song.album || '',
+      artwork: song.artwork || song.cover || '',
+      playing: state.playing,
+      position: state.currentTime || 0,
+      duration: state.duration || song.duration || 0,
+      hasQueue: state.queue.length > 1,
+    }))
+  } catch {
+    // The bridge only exists inside the Android shell.
+  }
+}
+
+function syncNativeState(force = false) {
+  if (typeof window === 'undefined' || !window.MusicDLNative) return
+  const key = `${current.value ? current.value.id : ''}|${state.playing}`
+  const now = Date.now()
+  if (!force && key === lastNativeKey && now - lastNativeSync < 4000) return
+  lastNativeKey = key
+  lastNativeSync = now
+  publishNativeState()
+}
+
+audio.addEventListener('play', () => syncNativeState(true))
+audio.addEventListener('pause', () => syncNativeState(true))
+audio.addEventListener('timeupdate', () => syncNativeState(false))
+
+if (typeof window !== 'undefined') {
+  window.__musicdlCommand = (command) => {
+    const cmd = String(command || '')
+    if (cmd === 'play') {
+      if (audio.paused) audio.play().catch(() => {})
+    } else if (cmd === 'pause') {
+      audio.pause()
+    } else if (cmd === 'toggle') {
+      toggle()
+    } else if (cmd === 'next') {
+      next()
+    } else if (cmd === 'prev') {
+      prev()
+    } else if (cmd === 'stop') {
+      audio.pause()
+      state.showNowPlaying = false
+    } else if (cmd.startsWith('seek:')) {
+      seek(Number(cmd.slice(5)))
+    }
+    syncNativeState(true)
+  }
+}
 
 async function restorePersistedQueue() {
   const saved = loadPersistedQueue()

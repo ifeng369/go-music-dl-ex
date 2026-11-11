@@ -6,8 +6,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
@@ -16,6 +18,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -43,15 +46,54 @@ public class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
 
+    private final PlaybackService.CommandSink commandSink = new PlaybackService.CommandSink() {
+        @Override
+        public void onCommand(final String command) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (webView == null) {
+                        return;
+                    }
+                    webView.evaluateJavascript(
+                            "window.__musicdlCommand && window.__musicdlCommand('" + command + "')", null);
+                }
+            });
+        }
+    };
+
+    /** Exposed to the web player as window.MusicDLNative. */
+    private class NativeBridge {
+        @JavascriptInterface
+        public void updateMediaState(String json) {
+            PlaybackService.pushState(MainActivity.this, json);
+        }
+
+        @JavascriptInterface
+        public void clearMediaState() {
+            PlaybackService.clear(MainActivity.this);
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        PlaybackService.setCommandSink(commandSink);
+        requestNotificationPermission();
         prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String saved = prefs.getString(KEY_URL, "");
         if (saved == null || saved.trim().isEmpty()) {
             showSetup("");
         } else {
             showWeb(saved);
+        }
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 2001);
         }
     }
 
@@ -209,6 +251,7 @@ public class MainActivity extends Activity {
                 }
             });
 
+            webView.addJavascriptInterface(new NativeBridge(), "MusicDLNative");
             setContentView(webView);
         }
         webView.loadUrl(url + "/");
@@ -277,6 +320,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        PlaybackService.setCommandSink(null);
         if (webView != null) {
             webView.destroy();
             webView = null;
