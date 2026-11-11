@@ -313,6 +313,72 @@ function playAt(index, options = {}) {
   })
 }
 
+// ---------------------------------------------------------------- precheck
+// Resolving a playable URL is the slowest part of starting a track and the
+// upstream providers fail intermittently. Warm the queue in the background so
+// a broken item is swapped for a working source before the user reaches it.
+
+const precheckCache = new Set()
+let precheckToken = 0
+
+function precheckKey(song) {
+  return song && song.id ? String(song.id) : ''
+}
+
+async function probePlayable(song) {
+  const params = { source: song.source, id: song.sourceId || song.id }
+  if (song.extra && Object.keys(song.extra).length) params.extra = JSON.stringify(song.extra)
+  if (song.title) params.title = song.title
+  if (song.artist) params.artist = song.artist
+  if (song.album) params.album = song.album
+  if (song.duration) params.duration = song.duration
+  try {
+    const data = await api.songUrl(params)
+    return Boolean(data && data.url)
+  } catch {
+    return false
+  }
+}
+
+async function precheckQueue(songs) {
+  const list = (songs || []).filter(
+    (song) => song && song.source && song.source !== 'local' && !precheckCache.has(precheckKey(song)),
+  )
+  if (!list.length) return
+  const token = ++precheckToken
+  const batch = list.slice(0, 40)
+  let cursor = 0
+
+  const worker = async () => {
+    while (cursor < batch.length) {
+      const song = batch[cursor]
+      cursor += 1
+      if (token !== precheckToken) return
+      const key = precheckKey(song)
+      if (!key || precheckCache.has(key)) continue
+      const playable = await probePlayable(song)
+      if (token !== precheckToken) return
+      if (playable) {
+        precheckCache.add(key)
+        continue
+      }
+      // Not playable: look for a working replacement and rewire the queue entry
+      // while it is still upcoming.
+      const candidates = await fetchAlternatives(song)
+      if (token !== precheckToken) return
+      const replacement = candidates.find((item) => item && item.source && item.source !== song.source)
+      const index = state.queue.findIndex((item) => item.id === song.id)
+      precheckCache.add(key)
+      if (!replacement || index < 0 || index === state.index) continue
+      state.queue.splice(index, 1, replacement)
+      rememberSourceOverride(song, replacement)
+      precheckCache.add(precheckKey(replacement))
+    }
+  }
+
+  await Promise.all([worker(), worker(), worker()])
+}
+
 function playSongs(songs, start = 0) {
   const list = (songs || []).map(applySourceOverride).filter((song) => song && song.source && (song.sourceId || song.id))
   if (!list.length) return
@@ -321,6 +387,7 @@ function playSongs(songs, start = 0) {
     if (token !== playToken) return
     state.queue = resolved
     playAt(Math.min(Math.max(0, start), resolved.length - 1))
+    precheckQueue(resolved)
   })
 }
 
@@ -402,10 +469,15 @@ function cycleMode() {
 }
 
 function addToQueue(songs) {
+  const added = []
   for (const song of songs || []) {
     if (!song || !song.source) continue
-    if (!state.queue.some((item) => item.id === song.id)) state.queue.push(song)
+    if (!state.queue.some((item) => item.id === song.id)) {
+      state.queue.push(song)
+      added.push(song)
+    }
   }
+  if (added.length) precheckQueue(added)
 }
 
 function removeFromQueue(index) {
