@@ -2281,11 +2281,11 @@ kbd {
 
   .player-progress {
     position: absolute;
-    top: 0;
+    top: -1px;
     left: 0;
     right: 0;
     bottom: auto;
-    height: 14px;
+    height: 3px;
     align-items: center;
     max-width: none;
     padding: 0 10px;
@@ -2295,7 +2295,7 @@ kbd {
   }
 
   .player-progress .t-slider {
-    height: 14px;
+    height: 3px;
     display: flex;
     align-items: center;
   }
@@ -3092,4 +3092,12 @@ a,
   .now-lyrics-line.active {
     font-size: 16px;
   }
+}
+
+/* The thin phone progress line sits on the very top edge of the player bar, so
+   its 12px knob pokes above it. The playing view is painted above the bar, which
+   used to hide that knob; keep the bar above the overlay instead of making the
+   slider taller. The queue card layer (z-index 100) still stays on top. */
+.player-bar {
+  z-index: 80;
 }
