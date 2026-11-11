@@ -2308,3 +2308,44 @@ body.now-playing-open .queue-panel {
   width: 90px;
   flex: 0 0 auto;
 }
+
+/* Align the source switcher with the like button. */
+.now-actions .source-switcher {
+  width: auto;
+  margin-top: 0;
+}
+
+.now-actions .source-trigger {
+  height: 32px;
+  margin: 0;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: #f3f3f7;
+  color: #5f5f6a;
+  line-height: 1;
+}
+
+.now-actions .source-trigger:hover,
+.now-actions .source-trigger.open {
+  background: #eaeaef;
+  color: #2b2b33;
+}
+
+/* Hide the lyrics scrollbar but keep wheel scrolling. */
+.now-lyrics-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.now-lyrics-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Slightly larger previous / next icons. */
+.player-controls .prev-button,
+.player-controls .next-button {
+  width: 34px;
+  height: 34px;
+  font-size: 22px;
+}

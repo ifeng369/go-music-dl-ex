@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
 import PlayerBar from './components/PlayerBar.vue'
 import QueuePanel from './components/QueuePanel.vue'
-import LyricsPanel from './components/LyricsPanel.vue'
 import NowPlaying from './components/NowPlaying.vue'
 import { loadMeta, meta } from './meta'
 import { auth } from './auth'
@@ -98,7 +97,6 @@ function submitSearch() {
 
     <PlayerBar />
     <QueuePanel />
-    <LyricsPanel />
     <NowPlaying />
   </div>
 </template>

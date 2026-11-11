@@ -20,7 +20,6 @@ const state = reactive({
   error: '',
   lyrics: [],
   lyricIndex: -1,
-  showLyrics: false,
   showQueue: false,
   showNowPlaying: false,
   alternatives: [],

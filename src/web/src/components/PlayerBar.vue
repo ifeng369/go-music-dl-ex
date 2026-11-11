@@ -121,14 +121,6 @@ function toggleLike() {
     </div>
 
     <div class="player-extra">
-      <button
-        class="icon-button"
-        title="歌词"
-        :class="{ active: state.showLyrics }"
-        @click.stop="state.showLyrics = !state.showLyrics"
-      >
-        <i class="ri-file-music-line"></i>
-      </button>
       <button class="icon-button" :title="state.muted ? '取消静音' : '静音'" @click.stop="player.toggleMute()">
         <i :class="volume ? 'ri-volume-up-line' : 'ri-volume-mute-line'"></i>
       </button>
