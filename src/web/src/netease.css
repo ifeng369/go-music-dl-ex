@@ -2795,7 +2795,6 @@ kbd {
   padding: 0;
   border: 0;
   border-radius: 50%;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
@@ -2834,6 +2833,23 @@ kbd {
 
 .icon-button i,
 .row-play i {
+  display: block;
+  margin: 0;
+  line-height: 1;
+}
+
+/* Heart button in the playing view: same box treatment as the transport
+   buttons so the glyph sits in the middle of the circle on iOS too. */
+.now-like {
+  box-sizing: border-box;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.now-like i {
   display: block;
   margin: 0;
   line-height: 1;
