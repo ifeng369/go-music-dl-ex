@@ -2611,6 +2611,14 @@ kbd {
   object-fit: cover;
 }
 
+/* Never rotate the clipped image: a transformed child makes Chromium build a
+   coarse polygon mask for the rounded clip, which chamfers the cover corners.
+   A static image is clipped to an exact circle. */
+.now-stage .now-art img {
+  animation: none;
+  transform: none;
+}
+
 /* Default artwork for playlists and cards without a cover image. */
 .cover-fallback,
 .playlist-cover-fallback {

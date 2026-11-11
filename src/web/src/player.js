@@ -115,7 +115,7 @@ function syncLyricIndex() {
 async function loadLyric(song) {
   state.lyrics = []
   state.lyricIndex = -1
-  if (!song || song.source === 'local') return
+  if (!song) return
   try {
     const data = await api.lyric(lyricParams(song))
     state.lyrics = parseLrc(data.rawLrc || data.lrc || '')

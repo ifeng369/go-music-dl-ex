@@ -108,6 +108,18 @@ func (s *Server) handleLyric(w http.ResponseWriter, r *http.Request) {
 		Album:    meta.Album,
 		Duration: meta.Duration,
 	}
+	if source == "local" {
+		lyric := ""
+		if user := s.currentUser(r); user != nil {
+			lyric = s.localLyric(user, id)
+		}
+		if strings.TrimSpace(lyric) == "" {
+			writeJSON(w, http.StatusOK, map[string]any{"rawLrc": "", "lrc": "", "source": source, "id": id})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"rawLrc": lyric, "lrc": lyric, "source": source, "id": id})
+		return
+	}
 	fn := core.GetLyricFunc(source)
 	if fn == nil {
 		writeJSON(w, http.StatusOK, map[string]any{"rawLrc": "", "source": source, "id": id})
