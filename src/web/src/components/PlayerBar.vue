@@ -27,7 +27,12 @@ const liked = computed(() => Boolean(current.value && isFavorite(current.value))
 const volume = computed(() => (state.muted ? 0 : state.volume))
 
 function onSeek(value) {
-  player.seek(Number(value))
+  const target = Number(value)
+  if (!Number.isFinite(target)) return
+  // TDesign emits change whenever the bound value is refreshed by playback, so
+  // ignore the programmatic echo and only honour real drags.
+  if (Math.abs(target - state.currentTime) < 0.8) return
+  player.seek(target)
 }
 
 function onVolume(value) {

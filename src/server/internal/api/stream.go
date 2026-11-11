@@ -8,13 +8,31 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/guohuiyuan/go-music-dl/core"
 	"github.com/guohuiyuan/music-lib/model"
 	"github.com/guohuiyuan/music-lib/soda"
+)
+
+// Resolved playback URLs are reused for a few minutes. Providers reject a
+// share of resolve calls and their signed URLs stay valid much longer than
+// this window, so caching keeps a single song streaming without re-resolving
+// on every range request the browser makes.
+const streamURLCacheTTL = 5 * time.Minute
+
+type streamURLCacheEntry struct {
+	url     string
+	expires time.Time
+}
+
+var (
+	streamURLCacheMu sync.Mutex
+	streamURLCache   = map[string]streamURLCacheEntry{}
 )
 
 func (s *Server) handleSong(w http.ResponseWriter, r *http.Request) {
@@ -77,6 +95,50 @@ func (s *Server) handleSongURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func resolveStreamURL(source, id string, extra map[string]string, meta itemMeta) (string, error) {
+	key := streamCacheKey(source, id, extra)
+	now := time.Now()
+	streamURLCacheMu.Lock()
+	if entry, ok := streamURLCache[key]; ok && entry.expires.After(now) {
+		streamURLCacheMu.Unlock()
+		return entry.url, nil
+	}
+	streamURLCacheMu.Unlock()
+
+	// Resolving a playable URL hits the upstream provider and fails
+	// intermittently (netease answers "download url not found" roughly one
+	// call in three). A single failed resolve during playback aborts a media
+	// range request, which the browser reports as a stall, so retry a few
+	// times before giving up.
+	var lastErr error
+	for attempt := 0; attempt < 4; attempt++ {
+		direct, err := resolveStreamURLOnce(source, id, extra, meta)
+		if err == nil && strings.TrimSpace(direct) != "" {
+			streamURLCacheMu.Lock()
+			if len(streamURLCache) > 256 {
+				for k, v := range streamURLCache {
+					if v.expires.Before(now) {
+						delete(streamURLCache, k)
+					}
+				}
+			}
+			streamURLCache[key] = streamURLCacheEntry{url: direct, expires: now.Add(streamURLCacheTTL)}
+			streamURLCacheMu.Unlock()
+			return direct, nil
+		}
+		if err != nil {
+			lastErr = err
+		}
+		if attempt < 3 {
+			time.Sleep(time.Duration(120*(attempt+1)) * time.Millisecond)
+		}
+	}
+	if lastErr == nil {
+		lastErr = errors.New("failed to resolve stream url")
+	}
+	return "", lastErr
+}
+
+func resolveStreamURLOnce(source, id string, extra map[string]string, meta itemMeta) (string, error) {
 	fn := core.GetDownloadFunc(source)
 	if fn == nil {
 		return "", errors.New("source does not support playback: " + source)
@@ -91,6 +153,28 @@ func resolveStreamURL(source, id string, extra map[string]string, meta itemMeta)
 		Duration: meta.Duration,
 	}
 	return fn(song)
+}
+
+func streamCacheKey(source, id string, extra map[string]string) string {
+	if len(extra) == 0 {
+		return source + "|" + id
+	}
+	keys := make([]string, 0, len(extra))
+	for k := range extra {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	b.WriteString(source)
+	b.WriteString("|")
+	b.WriteString(id)
+	for _, k := range keys {
+		b.WriteString("|")
+		b.WriteString(k)
+		b.WriteString("=")
+		b.WriteString(extra[k])
+	}
+	return b.String()
 }
 
 func (s *Server) handleLyric(w http.ResponseWriter, r *http.Request) {

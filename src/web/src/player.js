@@ -4,7 +4,9 @@ import { addHistory } from './library'
 import { hydrateLocalSongs } from './localdb'
 import { sourceName } from './meta'
 
-const savedVolume = Number(localStorage.getItem('musicdl.volume'))
+const rawVolume = localStorage.getItem('musicdl.volume')
+// Number(null) is 0, which silently muted every first-time visitor.
+const savedVolume = rawVolume === null || rawVolume === '' ? NaN : Number(rawVolume)
 const savedMode = localStorage.getItem('musicdl.mode')
 
 const state = reactive({
@@ -33,6 +35,23 @@ const audio = new Audio()
 audio.preload = 'auto'
 audio.setAttribute('playsinline', '')
 audio.volume = state.volume
+// Safari treats a media element that is not in the document as a detached
+// stream and can throttle it while the page renders; mounting it hidden keeps
+// decoding on the normal playback path.
+audio.style.display = 'none'
+if (document.body) {
+  document.body.appendChild(audio)
+} else {
+  document.addEventListener('DOMContentLoaded', () => document.body.appendChild(audio))
+}
+// A media element created without a source can inherit a stale rate on iOS,
+// which is audible as slowed-down playback. Pin both rates to 1x.
+function normalizePlaybackRate() {
+  if (audio.playbackRate !== 1) audio.playbackRate = 1
+  if (audio.defaultPlaybackRate !== 1) audio.defaultPlaybackRate = 1
+}
+audio.addEventListener('play', normalizePlaybackRate)
+audio.addEventListener('playing', normalizePlaybackRate)
 let playToken = 0
 let altToken = 0
 const altCache = new Map()
@@ -340,6 +359,15 @@ function prev() {
 function seek(time) {
   if (!Number.isFinite(time)) return
   const target = Math.min(Math.max(0, time), state.duration || time)
+  // Sliders and lyrics also report the position they were rendered with, which
+  // arrives a fraction behind the playhead. Writing currentTime for those echo
+  // values restarts the decoder several times a second, so playback ran slow
+  // and choppy. Ignore seeks that barely move the playhead.
+  if (Math.abs(target - audio.currentTime) < 0.5) {
+    state.currentTime = audio.currentTime
+    syncLyricIndex()
+    return
+  }
   audio.currentTime = target
   state.currentTime = target
   syncLyricIndex()
