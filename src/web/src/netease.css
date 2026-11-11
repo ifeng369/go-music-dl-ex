@@ -2884,3 +2884,55 @@ kbd {
   height: 100%;
   font-size: 42px;
 }
+
+/* --------------------------------------------------- touch feedback */
+/* iOS paints a translucent grey rectangle over whatever was tapped; on the
+   player bar that reads as the whole bottom strip turning grey. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+.player-bar,
+.player-controls,
+.icon-button,
+.song-row,
+.sheet-card,
+.playlist-card,
+.ri-close-line {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.player-bar,
+.player-controls,
+.icon-button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* A calm grey knob on both sliders instead of the red ring. */
+.player-progress .t-slider__button,
+.player-extra .t-slider__button {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: #c9c9d2;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.player-progress .t-slider__button:hover,
+.player-extra .t-slider__button:hover {
+  background: #b3b3bf;
+}
+
+.range::-webkit-slider-thumb {
+  background: #c9c9d2;
+  box-shadow: none;
+}
+
+.range::-moz-range-thumb {
+  background: #c9c9d2;
+  border: 0;
+}
