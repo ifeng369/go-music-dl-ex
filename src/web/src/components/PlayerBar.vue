@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from 'vue'
+import { Slider as TSlider } from 'tdesign-vue-next'
+import 'tdesign-vue-next/es/slider/style/index.css'
 import { formatDuration } from '../api'
 import { player } from '../player'
 import { isFavorite, toggleFavorite } from '../library'
@@ -22,17 +24,19 @@ const modeTitle = computed(() => {
 
 const liked = computed(() => Boolean(current.value && isFavorite(current.value)))
 
-function onSeek(event) {
-  player.seek(Number(event.target.value))
+const volume = computed(() => (state.muted ? 0 : state.volume))
+
+function onSeek(value) {
+  player.seek(Number(value))
 }
 
-function onVolume(event) {
-  player.setVolume(Number(event.target.value))
+function onVolume(value) {
+  player.setVolume(Number(value))
 }
 
 function openNowPlaying(event) {
   if (!current.value) return
-  if (event && event.target && event.target.closest('button, input, a, .range')) return
+  if (event && event.target && event.target.closest('button, input, a, .range, .t-slider')) return
   state.showNowPlaying = true
 }
 
@@ -92,48 +96,46 @@ function toggleLike() {
         <button class="icon-button" title="下一首" :disabled="!current" @click.stop="player.next()">
           <i class="ri-skip-forward-fill"></i>
         </button>
-        <button
-          class="icon-button"
-          title="歌词"
-          :class="{ active: state.showLyrics }"
-          @click.stop="state.showLyrics = !state.showLyrics"
-        >
-          <i class="ri-file-music-line"></i>
-        </button>
       </div>
       <div class="player-progress">
         <span class="time">{{ formatDuration(state.currentTime) }}</span>
-        <input
-          class="range"
-          type="range"
-          min="0"
-          :max="state.duration || 0"
-          step="0.5"
+        <t-slider
+          class="progress-range"
           :value="state.currentTime"
-          :style="{ '--fill': `${progress * 100}%` }"
-          @input="onSeek"
+          :max="state.duration || 1"
+          :step="0.5"
+          :disabled="!current"
+          :tooltip-props="{ showArrow: false }"
+          @change="onSeek"
         />
         <span class="time">{{ formatDuration(state.duration) }}</span>
       </div>
     </div>
 
     <div class="player-extra">
+      <button
+        class="icon-button"
+        title="歌词"
+        :class="{ active: state.showLyrics }"
+        @click.stop="state.showLyrics = !state.showLyrics"
+      >
+        <i class="ri-file-music-line"></i>
+      </button>
       <button class="icon-button" title="播放队列" :class="{ active: state.showQueue }" @click.stop="state.showQueue = !state.showQueue">
         <i class="ri-play-list-2-line"></i>
         <span v-if="state.queue.length" class="queue-count">{{ state.queue.length }}</span>
       </button>
       <button class="icon-button" :title="state.muted ? '取消静音' : '静音'" @click.stop="player.toggleMute()">
-        <i :class="state.muted || !state.volume ? 'ri-volume-mute-line' : 'ri-volume-up-line'"></i>
+        <i :class="volume ? 'ri-volume-up-line' : 'ri-volume-mute-line'"></i>
       </button>
-      <input
-        class="range volume-range"
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        :value="state.muted ? 0 : state.volume"
-        :style="{ '--fill': `${(state.muted ? 0 : state.volume) * 100}%` }"
-        @input="onVolume"
+      <t-slider
+        class="volume-range"
+        :value="volume"
+        :min="0"
+        :max="1"
+        :step="0.01"
+        :tooltip-props="{ showArrow: false }"
+        @change="onVolume"
       />
     </div>
   </footer>

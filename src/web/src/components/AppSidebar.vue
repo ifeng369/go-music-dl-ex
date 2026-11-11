@@ -4,13 +4,19 @@ import { useRoute, useRouter } from 'vue-router'
 import { meta } from '../meta'
 import { auth } from '../auth'
 
+defineProps({
+  open: { type: Boolean, default: false },
+})
+
+const emit = defineEmits(['close'])
+
 const route = useRoute()
 const router = useRouter()
 
 const navGroups = computed(() => {
   const groups = [
     {
-      label: '',
+      label: '在线音乐',
       items: [
         { to: '/', icon: 'ri-compass-3-line', active: 'ri-compass-3-fill', label: '发现音乐', name: 'home' },
         { to: '/toplist', icon: 'ri-bar-chart-2-line', active: 'ri-bar-chart-2-fill', label: '排行榜', name: 'toplist' },
@@ -24,7 +30,7 @@ const navGroups = computed(() => {
         { to: '/my', icon: 'ri-play-list-2-line', active: 'ri-play-list-2-fill', label: '我的歌单', name: 'my-playlists' },
         { to: '/favorites', icon: 'ri-heart-3-line', active: 'ri-heart-3-fill', label: '收藏音乐', name: 'favorites' },
         { to: '/history', icon: 'ri-history-line', active: 'ri-history-fill', label: '播放记录', name: 'history' },
-      { to: '/downloads', icon: 'ri-download-cloud-line', active: 'ri-download-cloud-fill', label: '下载记录', name: 'downloads' },
+        { to: '/downloads', icon: 'ri-download-cloud-line', active: 'ri-download-cloud-fill', label: '下载记录', name: 'downloads' },
       ],
     },
   ]
@@ -54,13 +60,18 @@ function isActive(item) {
 
 async function logout() {
   await auth.logout()
+  emit('close')
   router.push({ name: 'login' })
 }
 </script>
 
 <template>
-  <aside class="sidebar">
-    <router-link to="/" class="brand">
+  <aside class="sidebar" :class="{ open }">
+    <button class="icon-button sidebar-close" title="关闭菜单" @click="emit('close')">
+      <i class="ri-close-line"></i>
+    </button>
+
+    <router-link to="/" class="brand" @click="emit('close')">
       <span class="brand-mark"><i class="ri-music-2-fill"></i></span>
       <span class="brand-text">
         <strong>MusicDL</strong>
@@ -77,6 +88,7 @@ async function logout() {
           :to="item.to"
           class="nav-item"
           :class="{ active: isActive(item) }"
+          @click="emit('close')"
         >
           <i :class="isActive(item) ? item.active : item.icon"></i>
           <span>{{ item.label }}</span>
@@ -95,7 +107,7 @@ async function logout() {
           <i class="ri-logout-box-r-line"></i>
         </button>
       </template>
-      <router-link v-else to="/login" class="account-login">
+      <router-link v-else to="/login" class="account-login" @click="emit('close')">
         <i class="ri-user-line"></i> 登录
       </router-link>
     </div>
