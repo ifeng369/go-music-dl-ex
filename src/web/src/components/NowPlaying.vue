@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { formatBitrate, formatDuration, formatSize } from '../api'
+import { api, formatBitrate, formatDuration, formatSize } from '../api'
 import { player } from '../player'
 import { isFavorite, toggleFavorite } from '../library'
 import { sourceName } from '../meta'
@@ -12,6 +12,25 @@ const current = player.current
 const sourceMenuOpen = ref(false)
 const switcherRef = ref(null)
 const lyricScroll = ref(null)
+const downloading = ref(false)
+const downloadNote = ref('')
+
+async function downloadCurrent() {
+  if (!current.value || downloading.value) return
+  downloading.value = true
+  downloadNote.value = ''
+  try {
+    await api.download({ song: current.value, withCover: false, withLyrics: true })
+    downloadNote.value = '已开始下载'
+  } catch (err) {
+    downloadNote.value = err.message || '下载失败'
+  } finally {
+    downloading.value = false
+    window.setTimeout(() => {
+      downloadNote.value = ''
+    }, 2600)
+  }
+}
 
 const liked = computed(() => Boolean(current.value && isFavorite(current.value)))
 const modeIcon = computed(() => {
@@ -209,7 +228,18 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
               </div>
+
+              <button
+                class="now-like now-download"
+                :title="downloading ? '下载中' : '下载这首歌曲'"
+                :disabled="downloading"
+                @click="downloadCurrent"
+              >
+                <i :class="downloading ? 'ri-loader-4-line spin' : 'ri-download-line'"></i>
+              </button>
             </div>
+
+            <p v-if="downloadNote" class="now-download-note">{{ downloadNote }}</p>
 
             <p v-if="state.error" class="now-error">{{ state.error }}</p>
           </header>

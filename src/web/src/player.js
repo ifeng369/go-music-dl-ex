@@ -1,6 +1,6 @@
 import { computed, reactive, watch } from 'vue'
 import { api, lyricParams, streamUrl } from './api'
-import { addHistory } from './library'
+import { addHistory, getPlayerQueue, isFavorite, onLibraryLoaded, savePlayerQueue, toggleFavorite } from './library'
 import { hydrateLocalSongs } from './localdb'
 import { sourceName } from './meta'
 
@@ -606,6 +606,10 @@ function persistQueue(force = false) {
   } catch {
     // Ignore storage quota errors.
   }
+  savePlayerQueue(
+    { songs: state.queue, index: state.index, currentTime: state.currentTime },
+    force,
+  )
 }
 
 function persistQueueProgress() {
@@ -643,6 +647,7 @@ function publishNativeState() {
       album: song.album || '',
       artwork: song.artwork || song.cover || '',
       playing: state.playing,
+      liked: Boolean(current.value && isFavorite(current.value)),
       position: state.currentTime || 0,
       duration: state.duration || song.duration || 0,
       hasQueue: state.queue.length > 1,
@@ -679,6 +684,8 @@ if (typeof window !== 'undefined') {
       next()
     } else if (cmd === 'prev') {
       prev()
+    } else if (cmd === 'like') {
+      if (current.value) toggleFavorite(current.value)
     } else if (cmd === 'stop') {
       audio.pause()
       state.showNowPlaying = false
@@ -731,3 +738,17 @@ async function restorePersistedQueue() {
 }
 
 restorePersistedQueue()
+// Adopt the queue stored on the server when this device has none yet.
+onLibraryLoaded(() => {
+  if (state.queue.length) return
+  const saved = getPlayerQueue()
+  const songs = (saved.songs || []).filter(
+    (song) => song && song.source && song.source !== 'local' && (song.sourceId || song.id),
+  )
+  if (!songs.length) return
+  const index = Math.min(Math.max(0, Number(saved.index) || 0), songs.length - 1)
+  state.queue = songs
+  state.index = index
+  state.currentTime = Math.max(0, Number(saved.currentTime) || 0)
+  state.duration = songs[index].duration || 0
+})

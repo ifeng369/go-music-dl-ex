@@ -3108,3 +3108,68 @@ a,
     display: none;
   }
 }
+
+/* Download hint under the transport buttons in the playing view. */
+.now-download-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
+/* ------------------------------------------------- source filter chips */
+.source-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.source-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  color: #5f5f6a;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.source-chip i {
+  font-size: 15px;
+}
+
+.source-chip:hover {
+  border-color: #e0e0e8;
+  color: #2b2b33;
+}
+
+.source-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(236, 65, 65, 0.22);
+}
+
+@media (max-width: 900px) {
+  .source-chip {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+}

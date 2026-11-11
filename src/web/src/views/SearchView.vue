@@ -61,6 +61,12 @@ function changeSource() {
   load()
 }
 
+function pickSource(value) {
+  if (source.value === value) return
+  source.value = value
+  changeSource()
+}
+
 function playSong(index) {
   player.playSongs(result.value.items, index)
 }
@@ -102,15 +108,21 @@ watch(
         </button>
       </div>
       <div class="filters">
-        <label class="select-label">
-          <i class="ri-filter-3-line"></i>
-          <select v-model="source" @change="changeSource">
-            <option value="">全部音源</option>
-            <option v-for="option in sourceOptions" :key="option.id" :value="option.id">
-              {{ sourceName(option.id) }}
-            </option>
-          </select>
-        </label>
+        <div class="source-chips" role="tablist">
+          <button class="source-chip" :class="{ active: !source }" @click="pickSource('')">
+            <i class="ri-apps-2-line"></i>
+            <span>全部音源</span>
+          </button>
+          <button
+            v-for="option in sourceOptions"
+            :key="option.id"
+            class="source-chip"
+            :class="{ active: source === option.id }"
+            @click="pickSource(option.id)"
+          >
+            {{ sourceName(option.id) }}
+          </button>
+        </div>
       </div>
     </div>
 

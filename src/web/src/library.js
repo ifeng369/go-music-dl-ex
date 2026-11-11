@@ -10,6 +10,8 @@ export const library = reactive({
   history: [],
   playlists: [],
   sheetFavorites: [],
+  // The play queue lives on the server too so another device can continue.
+  playerQueue: { songs: [], index: 0, currentTime: 0 },
 })
 
 let currentUserID = null
@@ -81,12 +83,22 @@ function uniqueSheets(sheets) {
 
 function hasData(data) {
   if (!data || typeof data !== 'object') return false
+  const queued = data.playerQueue && Array.isArray(data.playerQueue.songs) && data.playerQueue.songs.length > 0
+  if (queued) return true
   return ['favorites', 'history', 'playlists', 'sheetFavorites'].some(
     (key) => Array.isArray(data[key]) && data[key].length > 0,
   )
 }
 
 function applyData(data) {
+  const queue = data && data.playerQueue
+  library.playerQueue = {
+    songs: Array.isArray(queue && queue.songs)
+      ? queue.songs.filter((song) => song && song.source && (song.sourceId || song.id))
+      : [],
+    index: Math.max(0, Number(queue && queue.index) || 0),
+    currentTime: Math.max(0, Number(queue && queue.currentTime) || 0),
+  }
   library.favorites = uniqueSongs(data && data.favorites)
   library.history = uniqueSongs(data && data.history)
   library.sheetFavorites = uniqueSheets(data && data.sheetFavorites)
@@ -109,6 +121,7 @@ function serialize() {
     history: library.history,
     playlists: library.playlists,
     sheetFavorites: library.sheetFavorites,
+    playerQueue: library.playerQueue,
   }
 }
 
@@ -186,7 +199,38 @@ export async function loadForUser(user) {
     hydrating = false
     hydrated = true
     cacheLocally()
+    for (const listener of libraryLoadedListeners) {
+      try {
+        listener()
+      } catch {
+        // A listener must never break hydration.
+      }
+    }
   }
+}
+
+const libraryLoadedListeners = []
+
+export function onLibraryLoaded(listener) {
+  if (typeof listener === 'function') libraryLoadedListeners.push(listener)
+}
+
+export function getPlayerQueue() {
+  const queue = library.playerQueue || { songs: [], index: 0, currentTime: 0 }
+  return { songs: queue.songs || [], index: queue.index || 0, currentTime: queue.currentTime || 0 }
+}
+
+export function savePlayerQueue(data, force = false) {
+  if (!currentUserID) return
+  const songs = Array.isArray(data && data.songs) ? data.songs : []
+  const index = Math.max(0, Number(data && data.index) || 0)
+  const currentTime = Math.max(0, Number(data && data.currentTime) || 0)
+  const prev = library.playerQueue || { songs: [], index: 0, currentTime: 0 }
+  const unchangedQueue = prev.index === index && (prev.songs || []).length === songs.length
+  if (!force && unchangedQueue && Math.abs((prev.currentTime || 0) - currentTime) < 15) {
+    return
+  }
+  library.playerQueue = { songs, index, currentTime }
 }
 
 export function resetLibrary() {

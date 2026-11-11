@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Icon;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
@@ -44,6 +45,7 @@ public class PlaybackService extends Service {
     static final String ACTION_PREV = "com.musicdl.shell.PREV";
     static final String ACTION_NEXT = "com.musicdl.shell.NEXT";
     static final String ACTION_STOP = "com.musicdl.shell.STOP";
+    static final String ACTION_LIKE = "com.musicdl.shell.LIKE";
     static final String EXTRA_STATE = "state";
 
     private static volatile CommandSink commandSink;
@@ -180,6 +182,11 @@ public class PlaybackService extends Service {
             dispatch("stop");
             return START_STICKY;
         }
+        if (ACTION_LIKE.equals(action)) {
+            ensureForeground();
+            dispatch("like");
+            return START_STICKY;
+        }
         String json = intent.getStringExtra(EXTRA_STATE);
         if (json != null) {
             applyState(json);
@@ -194,6 +201,7 @@ public class PlaybackService extends Service {
             artist = obj.optString("artist", "");
             album = obj.optString("album", "");
             playing = obj.optBoolean("playing", false);
+            liked = obj.optBoolean("liked", false);
             hasQueue = obj.optBoolean("hasQueue", false);
             durationMs = (long) (obj.optDouble("duration", 0) * 1000);
             positionMs = (long) (obj.optDouble("position", 0) * 1000);
@@ -341,10 +349,14 @@ public class PlaybackService extends Service {
             builder.setLargeIcon(artwork);
         }
 
-        builder.addAction(android.R.drawable.ic_media_previous, "上一曲", actionIntent(ACTION_PREV, 1));
-        builder.addAction(playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play,
+        // Custom vectors render crisp and larger than the thin platform media
+        // icons, which looked blurred on high-density screens.
+        addAction(builder, R.drawable.ic_prev, "上一曲", actionIntent(ACTION_PREV, 1));
+        addAction(builder, playing ? R.drawable.ic_pause : R.drawable.ic_play,
                 playing ? "暂停" : "播放", actionIntent(ACTION_TOGGLE, 2));
-        builder.addAction(android.R.drawable.ic_media_next, "下一曲", actionIntent(ACTION_NEXT, 3));
+        addAction(builder, R.drawable.ic_next, "下一曲", actionIntent(ACTION_NEXT, 3));
+        addAction(builder, liked ? R.drawable.ic_liked : R.drawable.ic_like,
+                liked ? "取消收藏" : "收藏", actionIntent(ACTION_LIKE, 4));
 
         Notification.MediaStyle style = new Notification.MediaStyle().setShowActionsInCompactView(0, 1, 2);
         if (session != null) {
@@ -355,6 +367,15 @@ public class PlaybackService extends Service {
             builder.setChannelId(CHANNEL_ID);
         }
         return builder.build();
+    }
+
+    private void addAction(Notification.Builder builder, int iconRes, CharSequence title, PendingIntent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            builder.addAction(new Notification.Action.Builder(
+                    Icon.createWithResource(this, iconRes), title, intent).build());
+        } else {
+            builder.addAction(iconRes, title, intent);
+        }
     }
 
     private PendingIntent actionIntent(String action, int code) {

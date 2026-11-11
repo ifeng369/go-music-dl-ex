@@ -21,12 +21,32 @@ android {
         versionName = appVersion
     }
 
+    signingConfigs {
+        // Fixed sideload key committed in the repository so every release can
+        // overwrite the previous install. A per-machine debug key changes on
+        // each CI run, which made upgrades impossible.
+        create("release") {
+            val store = rootProject.file("keystore/musicdl-release.p12")
+            if (store.exists()) {
+                storeFile = store
+                storeType = "PKCS12"
+                storePassword = "musicdl2024"
+                keyAlias = "musicdl"
+                keyPassword = "musicdl2024"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Sideload build: signed with the standard debug key so the APK can
-            // be installed without publishing a private keystore.
-            signingConfig = signingConfigs.getByName("debug")
+            val fixed = signingConfigs.findByName("release")
+            signingConfig = if (fixed != null && fixed.storeFile != null) {
+                fixed
+            } else {
+                // Local builds without the keystore still produce an APK.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
