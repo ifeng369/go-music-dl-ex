@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -183,6 +184,13 @@ func (s *Server) proxyHTTP(w http.ResponseWriter, r *http.Request, direct, sourc
 		if r.Method == http.MethodHead {
 			return
 		}
+		// Stream the range over one upstream connection instead of scheduling
+		// the whole file as parallel chunks: playback only needs a steady
+		// trickle, and ordered chunk writes stall whenever one early chunk is
+		// slow, which is audible as stuttering.
+		if streamRangeSequential(w, direct, source, fetch.Start, fetch.End) {
+			return
+		}
 		_ = fetch.WriteRangeTo(w)
 		return
 	}
@@ -226,6 +234,49 @@ func (s *Server) proxyHTTP(w http.ResponseWriter, r *http.Request, direct, sourc
 		return
 	}
 	_, _ = io.Copy(w, resp.Body)
+}
+
+// streamRangeSequential copies a byte range from the upstream audio server to
+// the client as it arrives. It reports false when the source does not answer a
+// plain range request with 206 so the caller can fall back to the core helper.
+func streamRangeSequential(w http.ResponseWriter, direct, source string, start, end int64) bool {
+	if end < start {
+		return false
+	}
+	req, err := core.BuildSourceRequest(http.MethodGet, direct, source, fmt.Sprintf("bytes=%d-%d", start, end))
+	if err != nil {
+		return false
+	}
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			ResponseHeaderTimeout: 20 * time.Second,
+		},
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusPartialContent {
+		return false
+	}
+	flusher, _ := w.(http.Flusher)
+	buf := make([]byte, 32*1024)
+	for {
+		n, readErr := resp.Body.Read(buf)
+		if n > 0 {
+			if _, err := w.Write(buf[:n]); err != nil {
+				return true
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+		if readErr != nil {
+			return true
+		}
+	}
 }
 
 func (s *Server) proxySoda(w http.ResponseWriter, r *http.Request, id string, extra map[string]string, meta itemMeta) {

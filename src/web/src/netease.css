@@ -2709,3 +2709,79 @@ kbd {
 .now-stage .now-art.spinning img {
   animation-play-state: running;
 }
+
+/* --------------------------------------------------- round play buttons */
+/* Safari sizes a grid-centred button inconsistently with a font icon inside,
+   which squashed the disc and pushed the play triangle to the right. A flex
+   box with a fixed square size keeps the circle perfect on every browser. */
+.play-badge,
+.playlist-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  line-height: 1;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sheet-cover .play-badge {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  font-size: 13px;
+}
+
+.play-badge i,
+.playlist-play i {
+  display: block;
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  line-height: 1;
+  /* A play triangle reads left-heavy when centred geometrically. */
+  transform: translateX(1px);
+}
+
+.sheet-cover .play-badge i {
+  transform: translateX(0.5px);
+}
+
+.playlist-play .ri-loader-4-line,
+.play-badge .ri-loader-4-line {
+  transform: none;
+}
+
+/* Touch screens have no hover, so keep the play affordance visible. */
+@media (hover: none) {
+  .sheet-card .play-badge,
+  .playlist-card .playlist-play {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Equal gaps between mode / prev / play / next / queue on phones. */
+  .player-bar.now-open .player-controls {
+    justify-content: space-between;
+    gap: 0;
+    padding: 0 8px;
+  }
+
+  .player-bar.now-open .player-controls .mode-button,
+  .player-bar.now-open .player-controls .queue-button {
+    margin-right: 0;
+    margin-left: 0;
+  }
+}

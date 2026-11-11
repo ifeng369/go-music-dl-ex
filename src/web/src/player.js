@@ -28,7 +28,10 @@ const state = reactive({
 })
 
 const audio = new Audio()
-audio.preload = 'metadata'
+// Buffer ahead instead of only fetching metadata: short preload windows are the
+// main cause of mid-song stalls on phones with a slow link.
+audio.preload = 'auto'
+audio.setAttribute('playsinline', '')
 audio.volume = state.volume
 let playToken = 0
 let altToken = 0

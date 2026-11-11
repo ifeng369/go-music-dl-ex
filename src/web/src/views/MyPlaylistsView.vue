@@ -105,6 +105,49 @@ function openSheet(sheet) {
   router.push(sheetRoute(sheet))
 }
 
+const playingSheetKey = ref('')
+const sheetError = ref('')
+
+function sheetKey(sheet) {
+  return `${sheet.source}:${sheet.type || 'playlist'}:${sheet.id}`
+}
+
+async function playSheet(sheet) {
+  if (playingSheetKey.value) return
+  const key = sheetKey(sheet)
+  playingSheetKey.value = key
+  sheetError.value = ''
+  try {
+    const type = sheet.type || 'playlist'
+    const params = {
+      source: sheet.source,
+      id: sheet.id,
+      title: sheet.title || undefined,
+      artist: sheet.artist || undefined,
+      cover: sheet.artwork || sheet.cover || undefined,
+      desc: sheet.description || undefined,
+      link: sheet.link || undefined,
+      count: sheet.playCount ?? undefined,
+      works: sheet.worksNum ?? sheet.trackCount ?? undefined,
+      limit: 500,
+    }
+    let detail
+    if (type === 'toplist') detail = await api.toplistDetail(params)
+    else if (type === 'album') detail = await api.album(params)
+    else detail = await api.playlist(params)
+    const songs = detail.musicList || []
+    if (!songs.length) {
+      sheetError.value = `「${sheet.title || '歌单'}」没有可播放的歌曲`
+      return
+    }
+    player.playSongs(songs, 0)
+  } catch (err) {
+    sheetError.value = `${sheet.title || '歌单'} 播放失败：${err.message || '请稍后重试'}`
+  } finally {
+    playingSheetKey.value = ''
+  }
+}
+
 function unfavorite(sheet) {
   removeSheetFavorite(sheet)
 }
@@ -132,6 +175,12 @@ onMounted(loadAccountPlaylists)
     <div class="library-summary">
       <span><i class="ri-play-list-2-line"></i> {{ library.playlists.length }} 个自建歌单 · {{ sheetFavorites.length }} 个收藏歌单<span v-if="accountCount"> · {{ accountCount }} 个账号歌单</span></span>
       <span class="library-tip">在歌单详情页点击「收藏歌单」即可加入这里</span>
+    </div>
+
+    <div v-if="sheetError" class="notice error compact">
+      <i class="ri-error-warning-line"></i>
+      {{ sheetError }}
+      <button class="text-button" @click="sheetError = ''">知道了</button>
     </div>
 
     <section class="section account-playlists">
@@ -170,8 +219,13 @@ onMounted(loadAccountPlaylists)
                   <img v-if="accountCover(sheet)" :src="accountCover(sheet)" :alt="sheet.title" loading="lazy" />
                   <div v-else class="playlist-cover-fallback"><i class="ri-music-2-line"></i></div>
                 </router-link>
-                <button class="playlist-play" title="查看歌单" @click="openSheet(sheet)">
-                  <i class="ri-arrow-right-up-line"></i>
+                <button
+                  class="playlist-play"
+                  :class="{ loading: playingSheetKey === sheetKey(sheet) }"
+                  title="播放歌单"
+                  @click.stop="playSheet(sheet)"
+                >
+                  <i :class="playingSheetKey === sheetKey(sheet) ? 'ri-loader-4-line spin' : 'ri-play-fill'"></i>
                 </button>
                 <span class="playlist-count"><i class="ri-music-2-line"></i> {{ sheet.worksNum ?? sheet.trackCount ?? 0 }}</span>
               </div>
@@ -210,8 +264,13 @@ onMounted(loadAccountPlaylists)
               <img v-if="sheet.artwork || sheet.cover" :src="sheet.artwork || sheet.cover" :alt="sheet.title" loading="lazy" />
               <div v-else class="playlist-cover-fallback"><i class="ri-heart-3-line"></i></div>
             </router-link>
-            <button class="playlist-play" title="查看歌单" @click="openSheet(sheet)">
-              <i class="ri-arrow-right-up-line"></i>
+            <button
+              class="playlist-play"
+              :class="{ loading: playingSheetKey === sheetKey(sheet) }"
+              title="播放歌单"
+              @click.stop="playSheet(sheet)"
+            >
+              <i :class="playingSheetKey === sheetKey(sheet) ? 'ri-loader-4-line spin' : 'ri-play-fill'"></i>
             </button>
             <span class="playlist-count"><i class="ri-bookmark-line"></i> {{ typeLabel(sheet.type) }}</span>
           </div>
