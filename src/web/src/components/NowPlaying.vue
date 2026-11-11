@@ -9,10 +9,8 @@ import { sourceName } from '../meta'
 const route = useRoute()
 const state = player.state
 const current = player.current
-const progress = player.progress
 const sourceMenuOpen = ref(false)
 const switcherRef = ref(null)
-const showLyricsView = ref(false)
 const lyricScroll = ref(null)
 
 const liked = computed(() => Boolean(current.value && isFavorite(current.value)))
@@ -26,20 +24,18 @@ const modeTitle = computed(() => {
   if (state.mode === 'shuffle') return '随机播放'
   return '列表循环'
 })
-const currentLyric = computed(() => {
-  const line = state.lyrics[state.lyricIndex]
-  return line ? line.text : ''
-})
+
 watch(
-  [() => state.lyricIndex, showLyricsView],
+  [() => state.lyricIndex, () => state.showNowPlaying, () => current.value?.id],
   async () => {
-    if (!showLyricsView.value) return
+    if (!state.showNowPlaying) return
     await nextTick()
     lyricScroll.value?.querySelector('.now-lyrics-line.active')?.scrollIntoView({
       block: 'center',
       behavior: 'smooth',
     })
   },
+  { immediate: true },
 )
 
 const backdropStyle = computed(() => (
@@ -50,10 +46,6 @@ const backdropStyle = computed(() => (
 
 function close() {
   state.showNowPlaying = false
-}
-
-function seek(event) {
-  player.seek(Number(event.target.value))
 }
 
 function toggleLike() {
@@ -144,142 +136,12 @@ onBeforeUnmount(() => {
       </header>
 
       <div class="now-layout">
-        <section class="now-main" :class="{ 'lyrics-mode': showLyricsView }">
+        <section class="now-stage">
           <template v-if="current">
-            <template v-if="!showLyricsView">
-              <div
-                class="now-art"
-                :class="{ spinning: state.playing }"
-                title="点击查看歌词"
-                role="button"
-                tabindex="0"
-                @click="showLyricsView = true"
-                @keydown.enter="showLyricsView = true"
-                @keydown.space.prevent="showLyricsView = true"
-              >
-                <img v-if="current.artwork" :src="current.artwork" :alt="current.title" />
-                <div v-else class="now-art-fallback"><i class="ri-music-2-line"></i></div>
-                <span class="now-art-ring"></span>
-              </div>
-
-              <div class="now-meta">
-                <h1>{{ current.title }}</h1>
-                <p>{{ current.artist || '未知歌手' }}<span v-if="current.album"> · {{ current.album }}</span></p>
-                <button
-                  class="now-like"
-                  :class="{ active: liked }"
-                  :title="liked ? '取消收藏' : '收藏'"
-                  @click="toggleLike"
-                >
-                  <i :class="liked ? 'ri-heart-3-fill' : 'ri-heart-3-line'"></i>
-                </button>
-              </div>
-            </template>
-
-            <div v-else class="now-lyrics-view">
-              <div class="now-lyrics-head">
-                <span><i class="ri-file-music-line"></i> 歌词</span>
-                <button class="now-lyrics-back" title="显示封面" @click="showLyricsView = false">
-                  <i class="ri-image-line"></i> 显示封面
-                </button>
-              </div>
-              <div ref="lyricScroll" class="now-lyrics-scroll">
-                <p
-                  v-for="(line, index) in state.lyrics"
-                  :key="index"
-                  class="now-lyrics-line"
-                  :class="{ active: index === state.lyricIndex }"
-                  @click="player.seek(line.time)"
-                >
-                  {{ line.text }}
-                </p>
-                <div v-if="!state.lyrics.length" class="now-lyrics-empty">当前歌曲暂无歌词</div>
-              </div>
-            </div>
-
-            <div ref="switcherRef" class="source-switcher">
-              <button class="source-trigger" :class="{ open: sourceMenuOpen }" @click.stop="toggleSourceMenu">
-                <span class="source-trigger-text">换源</span>
-                <i
-                  class="source-trigger-arrow"
-                  :class="state.alternativesLoading ? 'ri-loader-4-line spin' : (sourceMenuOpen ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line')"
-                ></i>
-              </button>
-
-              <div v-if="sourceMenuOpen" class="source-dropdown" @click.stop>
-                <div class="source-dropdown-head">
-                  <span>选择其他平台播放</span>
-                  <span v-if="state.switching" class="source-switching"><i class="ri-loader-4-line spin"></i> 换源中</span>
-                  <span v-else class="source-dropdown-current">当前 {{ sourceName(current.source) }}</span>
-                </div>
-                <button
-                  v-for="item in state.alternatives"
-                  :key="item.id"
-                  class="source-option"
-                  @click="switchSource(item)"
-                >
-                  <span class="source-option-main">
-                    <strong>{{ sourceName(item.source) }}</strong>
-                    <span class="source-option-song">{{ item.title }}<template v-if="item.artist"> · {{ item.artist }}</template></span>
-                  </span>
-                  <span class="source-option-stats">
-                    <span>码率 {{ formatBitrate(item.bitrate) }}</span>
-                    <span>大小 {{ formatSize(item.size) }}</span>
-                    <span>时长 {{ formatDuration(item.duration) }}</span>
-                  </span>
-                  <i class="ri-play-circle-line source-option-play"></i>
-                </button>
-                <div v-if="state.alternativesLoading" class="source-dropdown-state">
-                  <i class="ri-loader-4-line spin"></i> 正在搜索其他音源…
-                </div>
-                <div v-else-if="!state.alternatives.length" class="source-dropdown-state">
-                  没有找到其他平台的可用版本
-                </div>
-              </div>
-            </div>
-
-            <div class="now-progress">
-              <span class="time">{{ formatDuration(state.currentTime) }}</span>
-              <input
-                class="range"
-                type="range"
-                min="0"
-                :max="state.duration || 0"
-                step="0.5"
-                :value="state.currentTime"
-                :style="{ '--fill': `${progress * 100}%` }"
-                @input="seek"
-              />
-              <span class="time">{{ formatDuration(state.duration) }}</span>
-            </div>
-
-            <div class="now-controls">
-              <button class="icon-button" :title="modeTitle" @click="player.cycleMode()">
-                <i :class="modeIcon"></i>
-              </button>
-              <button class="icon-button" title="上一首" @click="player.prev()">
-                <i class="ri-skip-back-fill"></i>
-              </button>
-              <button class="play-button now-play" :title="state.playing ? '暂停' : '播放'" @click="player.toggle()">
-                <i :class="state.playing ? 'ri-pause-fill' : 'ri-play-fill'"></i>
-              </button>
-              <button class="icon-button" title="下一首" @click="player.next()">
-                <i class="ri-skip-forward-fill"></i>
-              </button>
-              <button
-                class="icon-button queue-button"
-                :class="{ active: state.showQueue }"
-                title="播放列表"
-                @click="state.showQueue = !state.showQueue"
-              >
-                <i class="ri-play-list-2-line"></i>
-              </button>
-            </div>
-
-            <div v-if="state.error || !showLyricsView" class="now-lyric">
-              <span v-if="state.error" class="player-error">{{ state.error }}</span>
-              <template v-else-if="currentLyric">{{ currentLyric }}</template>
-              <template v-else>当前歌曲暂无歌词</template>
+            <div class="now-art" :class="{ spinning: state.playing }">
+              <img v-if="current.artwork" :src="current.artwork" :alt="current.title" />
+              <div v-else class="now-art-fallback"><i class="ri-music-2-line"></i></div>
+              <span class="now-art-ring"></span>
             </div>
           </template>
           <div v-else class="now-empty">
@@ -288,6 +150,83 @@ onBeforeUnmount(() => {
           </div>
         </section>
 
+        <section v-if="current" class="now-lyrics-view">
+          <header class="now-lyrics-head">
+            <h1 class="now-title" :title="current.title">{{ current.title }}</h1>
+            <p class="now-sub">
+              <span v-if="current.album">专辑：{{ current.album }}</span>
+              <span>歌手：{{ current.artist || '未知歌手' }}</span>
+              <span>来源：{{ sourceName(current.source) }}</span>
+            </p>
+
+            <div class="now-actions">
+              <button
+                class="now-like"
+                :class="{ active: liked }"
+                :title="liked ? '取消收藏' : '收藏'"
+                @click="toggleLike"
+              >
+                <i :class="liked ? 'ri-heart-3-fill' : 'ri-heart-3-line'"></i>
+              </button>
+
+              <div ref="switcherRef" class="source-switcher">
+                <button class="source-trigger" :class="{ open: sourceMenuOpen }" @click.stop="toggleSourceMenu">
+                  <span class="source-trigger-text">换源</span>
+                  <i
+                    class="source-trigger-arrow"
+                    :class="state.alternativesLoading ? 'ri-loader-4-line spin' : (sourceMenuOpen ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line')"
+                  ></i>
+                </button>
+
+                <div v-if="sourceMenuOpen" class="source-dropdown" @click.stop>
+                  <div class="source-dropdown-head">
+                    <span>选择其他平台播放</span>
+                    <span v-if="state.switching" class="source-switching"><i class="ri-loader-4-line spin"></i> 换源中</span>
+                    <span v-else class="source-dropdown-current">当前 {{ sourceName(current.source) }}</span>
+                  </div>
+                  <button
+                    v-for="item in state.alternatives"
+                    :key="item.id"
+                    class="source-option"
+                    @click="switchSource(item)"
+                  >
+                    <span class="source-option-main">
+                      <strong>{{ sourceName(item.source) }}</strong>
+                      <span class="source-option-song">{{ item.title }}<template v-if="item.artist"> · {{ item.artist }}</template></span>
+                    </span>
+                    <span class="source-option-stats">
+                      <span>码率 {{ formatBitrate(item.bitrate) }}</span>
+                      <span>大小 {{ formatSize(item.size) }}</span>
+                      <span>时长 {{ formatDuration(item.duration) }}</span>
+                    </span>
+                    <i class="ri-play-circle-line source-option-play"></i>
+                  </button>
+                  <div v-if="state.alternativesLoading" class="source-dropdown-state">
+                    <i class="ri-loader-4-line spin"></i> 正在搜索其他音源…
+                  </div>
+                  <div v-else-if="!state.alternatives.length" class="source-dropdown-state">
+                    没有找到其他平台的可用版本
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p v-if="state.error" class="now-error">{{ state.error }}</p>
+          </header>
+
+          <div ref="lyricScroll" class="now-lyrics-scroll">
+            <p
+              v-for="(line, index) in state.lyrics"
+              :key="index"
+              class="now-lyrics-line"
+              :class="{ active: index === state.lyricIndex }"
+              @click="player.seek(line.time)"
+            >
+              {{ line.text }}
+            </p>
+            <div v-if="!state.lyrics.length" class="now-lyrics-empty">当前歌曲暂无歌词</div>
+          </div>
+        </section>
       </div>
 
       <transition name="slide-right">
