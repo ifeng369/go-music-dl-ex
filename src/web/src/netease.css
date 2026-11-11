@@ -2120,20 +2120,54 @@ body.now-playing-open .queue-panel {
     gap: 2px;
   }
 
-  /* Phones keep the full transport row: mode, previous, play, next, queue. */
+  /* Compact phone bar: only like / play / queue. */
   .player-bar .player-controls .icon-button {
-    display: grid;
+    display: none;
     width: 28px;
     height: 28px;
     font-size: 18px;
   }
 
-  .player-bar .player-controls .play-button {
+  .player-bar .player-controls .play-button,
+  .player-bar .player-controls .queue-button {
     display: grid;
   }
 
-  .player-bar .player-controls .queue-button {
+  /* With the playing view open the bar turns into a full transport row and
+     the track info moves out of the way. */
+  .player-bar.now-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .player-bar.now-open .player-track {
+    display: none;
+  }
+
+  .player-bar.now-open .player-controls {
+    width: 100%;
+    gap: 6px;
+    padding: 0 4px;
+  }
+
+  .player-bar.now-open .player-controls .icon-button {
     display: grid;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+  }
+
+  .player-bar.now-open .player-controls .mode-button {
+    margin-right: auto;
+  }
+
+  .player-bar.now-open .player-controls .queue-button {
+    margin-left: auto;
+  }
+
+  .player-bar.now-open .play-button {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
   }
 
   .play-button {

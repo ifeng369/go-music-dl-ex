@@ -50,7 +50,7 @@ function toggleLike() {
 </script>
 
 <template>
-  <footer class="player-bar" :class="{ clickable: Boolean(current) }" @click="toggleNowPlaying">
+  <footer class="player-bar" :class="{ clickable: Boolean(current), 'now-open': state.showNowPlaying }" @click="toggleNowPlaying">
     <div class="player-track">
       <button class="player-cover" :class="{ spinning: state.playing }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" @click="toggleNowPlayingForce">
         <img v-if="current && current.artwork" :src="current.artwork" :alt="current.title" />
