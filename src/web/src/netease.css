@@ -1278,7 +1278,7 @@ kbd {
 }
 
 .player-controls {
-  gap: 10px;
+  gap: 22px;
   align-items: center;
   justify-content: center;
 }
@@ -2593,13 +2593,13 @@ kbd {
   }
 }
 
-/* Keep the vinyl perfectly round: the circle is clipped on the container, not
-   on the rotating image. A rotated, rounded layer is sometimes approximated as
-   a polygon by the compositor, which left chamfered corners on the cover. */
+/* Keep the vinyl perfectly round: the circle is clipped on the container with
+   a plain border-radius, not on the rotating image. Chromium approximates a
+   clip-path circle on a compositing layer as a polygon, which chamfered the
+   corners, so only border-radius + overflow is used here. */
 .now-stage .now-art {
   border-radius: 50%;
   overflow: hidden;
-  clip-path: circle(50% at 50% 50%);
   isolation: isolate;
 }
 
@@ -2611,8 +2611,37 @@ kbd {
   object-fit: cover;
 }
 
-@media (max-width: 900px) {
-  .now-stage .now-art {
-    clip-path: circle(50% at 50% 50%);
-  }
+/* Default artwork for playlists and cards without a cover image. */
+.cover-fallback,
+.playlist-cover-fallback {
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #ffe3e3 0%, #ffd3dd 48%, #ffe9e0 100%);
+  color: rgba(236, 65, 65, 0.5);
+}
+
+.cover-fallback::before,
+.playlist-cover-fallback::before {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+}
+
+.cover-fallback::after,
+.playlist-cover-fallback::after {
+  content: '';
+  position: absolute;
+  inset: 26%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.cover-fallback i,
+.playlist-cover-fallback i {
+  position: relative;
+  z-index: 1;
+  color: rgba(236, 65, 65, 0.55);
 }
