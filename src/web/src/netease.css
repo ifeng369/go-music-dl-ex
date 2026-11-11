@@ -3173,3 +3173,13 @@ a,
     font-size: 12.5px;
   }
 }
+
+/* The base stylesheet caps the lyrics column at 680px, which left the whole
+   song-info block hugging the left edge of the stacked playing view (iPad
+   portrait and any wide single-column layout). Let it fill the container. */
+.now-lyrics-view {
+  width: 100%;
+  max-width: none;
+  margin-left: auto;
+  margin-right: auto;
+}

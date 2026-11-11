@@ -335,14 +335,19 @@ public class PlaybackService extends Service {
             flags |= PendingIntent.FLAG_IMMUTABLE;
         }
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, openIntent, flags);
+        if (session != null) {
+            // Lets the lock screen and Bluetooth panels open the app on tap.
+            session.setSessionActivity(contentIntent);
+        }
 
         builder.setSmallIcon(R.drawable.ic_stat_music)
+                .setOnlyAlertOnce(true)
                 .setContentTitle(title.isEmpty() ? "MusicDL Ex" : title)
                 .setContentText(artist.isEmpty() ? (album.isEmpty() ? "正在播放" : album) : artist)
                 .setSubText(album.isEmpty() ? null : album)
                 .setContentIntent(contentIntent)
                 .setShowWhen(false)
-                .setOngoing(playing)
+                .setOngoing(title != null && !title.isEmpty())
                 .setVisibility(Notification.VISIBILITY_PUBLIC);
 
         if (artwork != null) {
