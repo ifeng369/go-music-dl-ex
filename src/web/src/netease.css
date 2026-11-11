@@ -2617,8 +2617,7 @@ kbd {
   object-fit: cover;
   border-radius: 0;
   clip-path: none;
-  animation: none;
-  transform: none;
+  animation: spin 26s linear infinite;
 }
 
 .now-stage .now-art .now-art-fallback {
