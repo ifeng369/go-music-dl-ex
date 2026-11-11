@@ -18,7 +18,7 @@
   --success: #17b26a;
   --danger: #ec4141;
   --sidebar-w: 224px;
-  --player-h: 78px;
+  --player-h: 88px;
   --radius: 12px;
   --shadow-card: 0 6px 20px rgba(28, 28, 40, 0.06);
   --shadow-pop: 0 12px 36px rgba(28, 28, 40, 0.14);
@@ -1587,8 +1587,18 @@ body.now-playing-open .queue-panel {
 }
 
 .now-topbar .icon-button {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid var(--line);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  color: #4d4d56;
+  font-size: 24px;
+}
+
+.now-topbar .icon-button:hover {
+  background: transparent;
+  color: #17171c;
 }
 
 .now-art {
@@ -1913,7 +1923,7 @@ body.now-playing-open .queue-panel {
 @media (max-width: 900px) {
   :root {
     --sidebar-w: 0px;
-    --player-h: 74px;
+    --player-h: 82px;
   }
 
   .mobile-menu {
@@ -2107,17 +2117,17 @@ body.now-playing-open .queue-panel {
 
   .player-controls {
     order: 2;
-    gap: 4px;
+    gap: 2px;
   }
 
-  .mode-button,
-  .prev-button,
-  .next-button {
-    display: none;
+  /* Phones keep the full transport row: mode, previous, play, next, queue. */
+  .player-bar .player-controls .icon-button {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
   }
 
-  /* Base styles hide the 3rd control in some breakpoints; keep the main
-     transport button visible on phones. */
   .player-bar .player-controls .play-button {
     display: grid;
   }
@@ -2194,25 +2204,40 @@ body.now-playing-open .queue-panel {
   }
 
   .now-lyrics-head {
+    align-items: center;
+    text-align: center;
     padding-bottom: 10px;
   }
 
   .now-title {
     font-size: 18px;
+    text-align: center;
   }
 
   .now-sub {
+    justify-content: center;
     gap: 4px 14px;
     font-size: 12px;
+    text-align: center;
+  }
+
+  .now-actions {
+    justify-content: center;
+  }
+
+  .now-error {
+    text-align: center;
   }
 
   .now-lyrics-scroll {
     padding: 14px 2px 40px;
+    text-align: center;
   }
 
   .now-lyrics-line {
     font-size: 14px;
     padding: 4px 0;
+    text-align: center;
   }
 
   .now-lyrics-line.active {

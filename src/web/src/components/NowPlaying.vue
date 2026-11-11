@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
 
       <header class="now-topbar">
         <button class="icon-button" title="收起 (Esc)" @click="close">
-          <i class="ri-arrow-down-line"></i>
+          <i class="ri-arrow-down-s-line"></i>
         </button>
       </header>
 
