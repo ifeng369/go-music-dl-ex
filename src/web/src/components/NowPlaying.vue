@@ -165,6 +165,14 @@ onBeforeUnmount(() => {
               <div class="now-meta">
                 <h1>{{ current.title }}</h1>
                 <p>{{ current.artist || '未知歌手' }}<span v-if="current.album"> · {{ current.album }}</span></p>
+                <button
+                  class="now-like"
+                  :class="{ active: liked }"
+                  :title="liked ? '取消收藏' : '收藏'"
+                  @click="toggleLike"
+                >
+                  <i :class="liked ? 'ri-heart-3-fill' : 'ri-heart-3-line'"></i>
+                </button>
               </div>
             </template>
 
@@ -259,12 +267,12 @@ onBeforeUnmount(() => {
                 <i class="ri-skip-forward-fill"></i>
               </button>
               <button
-                class="icon-button"
-                :class="{ active: liked }"
-                :title="liked ? '取消收藏' : '收藏'"
-                @click="toggleLike"
+                class="icon-button queue-button"
+                :class="{ active: state.showQueue }"
+                title="播放列表"
+                @click="state.showQueue = !state.showQueue"
               >
-                <i :class="liked ? 'ri-heart-3-fill' : 'ri-heart-3-line'"></i>
+                <i class="ri-play-list-2-line"></i>
               </button>
             </div>
 
@@ -280,15 +288,23 @@ onBeforeUnmount(() => {
           </div>
         </section>
 
-        <aside class="now-queue">
+      </div>
+
+      <transition name="slide-right">
+        <aside v-if="state.showQueue" class="now-queue">
           <header class="now-queue-head">
             <div>
               <h3>播放列表</h3>
               <p>{{ state.queue.length }} 首歌曲</p>
             </div>
-            <button class="icon-button" title="清空播放列表" @click="player.clearQueue()">
-              <i class="ri-delete-bin-6-line"></i>
-            </button>
+            <div class="now-queue-actions">
+              <button class="icon-button" title="清空播放列表" @click="player.clearQueue()">
+                <i class="ri-delete-bin-6-line"></i>
+              </button>
+              <button class="icon-button" title="关闭播放列表" @click="state.showQueue = false">
+                <i class="ri-close-line"></i>
+              </button>
+            </div>
           </header>
           <div class="now-queue-list">
             <div
@@ -317,7 +333,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </aside>
-      </div>
+      </transition>
     </div>
   </transition>
 </template>

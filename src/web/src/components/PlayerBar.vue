@@ -87,14 +87,22 @@ function toggleLike() {
         >
           <i :class="modeIcon"></i>
         </button>
-        <button class="icon-button" title="上一首" :disabled="!current" @click.stop="player.prev()">
+        <button class="icon-button prev-button" title="上一首" :disabled="!current" @click.stop="player.prev()">
           <i class="ri-skip-back-fill"></i>
         </button>
         <button class="play-button" :title="state.playing ? '暂停' : '播放'" @click.stop="player.toggle()">
           <i :class="state.playing ? 'ri-pause-fill' : 'ri-play-fill'"></i>
         </button>
-        <button class="icon-button" title="下一首" :disabled="!current" @click.stop="player.next()">
+        <button class="icon-button next-button" title="下一首" :disabled="!current" @click.stop="player.next()">
           <i class="ri-skip-forward-fill"></i>
+        </button>
+        <button
+          class="icon-button queue-button"
+          title="播放列表"
+          :class="{ active: state.showQueue }"
+          @click.stop="state.showQueue = !state.showQueue"
+        >
+          <i class="ri-play-list-2-line"></i>
         </button>
       </div>
       <div class="player-progress">
@@ -120,10 +128,6 @@ function toggleLike() {
         @click.stop="state.showLyrics = !state.showLyrics"
       >
         <i class="ri-file-music-line"></i>
-      </button>
-      <button class="icon-button" title="播放队列" :class="{ active: state.showQueue }" @click.stop="state.showQueue = !state.showQueue">
-        <i class="ri-play-list-2-line"></i>
-        <span v-if="state.queue.length" class="queue-count">{{ state.queue.length }}</span>
       </button>
       <button class="icon-button" :title="state.muted ? '取消静音' : '静音'" @click.stop="player.toggleMute()">
         <i :class="volume ? 'ri-volume-up-line' : 'ri-volume-mute-line'"></i>
