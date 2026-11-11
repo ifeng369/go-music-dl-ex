@@ -1240,13 +1240,32 @@ kbd {
 }
 
 .player-cover {
+  position: relative;
   width: 46px;
   height: 46px;
-  border-radius: 8px;
+  border-radius: 50%;
+  overflow: hidden;
   background: #f2f2f5;
   color: #cfcfd8;
   font-size: 20px;
   box-shadow: 0 4px 10px rgba(28, 28, 40, 0.12);
+}
+
+/* Same disc treatment as the now-playing vinyl: over-scale the artwork so a
+   decorative border baked into the cover image falls outside the circle. */
+.player-cover img {
+  position: absolute;
+  top: -15%;
+  left: -15%;
+  width: 130%;
+  height: 130%;
+  max-width: none;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.player-cover.spinning img {
+  animation: spin 26s linear infinite;
 }
 
 .player-info {
