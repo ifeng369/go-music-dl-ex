@@ -4510,3 +4510,50 @@ body.now-playing-open {
   visibility: hidden;
 }
 
+/* iOS Safari icon centring.
+   Safari places icon-font glyphs on the text baseline, so glyphs inside
+   round/square controls look shifted down (the play triangle in particular).
+   Pin the icon box, keep circles square, and stop flex parents from squeezing
+   fixed-size round buttons into ellipses. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+i[class^="ri-"],
+i[class*=" ri-"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.play-button,
+.play-badge,
+.now-play {
+  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  line-height: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A play triangle reads as left-heavy once centred geometrically. */
+.play-button i[class*="ri-play"],
+.play-badge i[class*="ri-play"] {
+  margin-left: 1.5px;
+}
+
+/* Touch devices keep :hover stuck after a tap, which leaves the play button
+   permanently scaled/lighter. Only animate hover on real pointer devices. */
+@media (hover: none) {
+  .play-button:hover {
+    transform: none;
+    background: #f3f0ff;
+  }
+}
+
