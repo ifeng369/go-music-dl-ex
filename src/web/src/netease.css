@@ -388,6 +388,10 @@ a {
   border: 1px solid rgba(236, 65, 65, 0.4);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .content {
@@ -2935,4 +2939,12 @@ a,
 .range::-moz-range-thumb {
   background: #c9c9d2;
   border: 0;
+}
+
+@media (max-width: 900px) {
+  .topbar-login {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
 }
