@@ -3028,3 +3028,68 @@ a,
 .player-progress .t-slider__button {
   z-index: 3;
 }
+
+/* iPad portrait is wider than the phone breakpoint (up to 1024px) but still
+   has no room for the side-by-side layout, so stack the disc above the lyrics
+   and centre the song info there. */
+@media (min-width: 901px) and (max-width: 1100px) and (orientation: portrait) {
+  .now-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 16px;
+    max-width: 100%;
+    padding: 0 40px 16px;
+  }
+
+  .now-stage {
+    padding-top: 6px;
+  }
+
+  .now-stage .now-art {
+    width: min(34vh, 250px);
+  }
+
+  .now-lyrics-view {
+    padding: 0;
+  }
+
+  .now-lyrics-head {
+    align-items: center;
+    text-align: center;
+    padding-bottom: 12px;
+  }
+
+  .now-title {
+    font-size: 22px;
+    text-align: center;
+  }
+
+  .now-sub {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .now-actions {
+    justify-content: center;
+  }
+
+  .now-error {
+    text-align: center;
+  }
+
+  .now-lyrics-scroll {
+    text-align: center;
+    padding: 16px 2px 40px;
+  }
+
+  .now-lyrics-line {
+    text-align: center;
+    font-size: 15px;
+    padding: 5px 0;
+  }
+
+  .now-lyrics-line.active {
+    font-size: 16px;
+  }
+}
