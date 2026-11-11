@@ -48,37 +48,6 @@ const loginSources = computed(() =>
   meta.sources.filter((item) => item.requiresLogin || (cookies.value[item.id] && cookies.value[item.id].configured)),
 )
 const apiBase = computed(() => window.location.origin)
-const pluginTokenUrl = ref('')
-api.pluginToken().then((data) => { pluginTokenUrl.value = data.mintPluginUrl || '' }).catch(() => {})
-async function resetPluginToken() {
-  if (!window.confirm('重置后旧插件地址将失效，确定继续？')) return
-  try {
-    const data = await api.resetPluginToken()
-    pluginTokenUrl.value = data.mintPluginUrl || ''
-    notify('插件地址已重置')
-  } catch (err) {
-    notify('重置失败：' + (err.message || '请稍后重试'), 'error')
-  }
-}
-async function copyPluginToken() {
-  if (!pluginTokenUrl.value) return
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(pluginTokenUrl.value)
-    } else {
-      const ta = document.createElement('textarea')
-      ta.value = pluginTokenUrl.value
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      ta.remove()
-    }
-    notify('个人插件地址已复制')
-  } catch {
-    notify('复制失败', 'error')
-  }
-}
-
 function notify(text, type = 'ok') {
   message.value = text
   messageType.value = type
@@ -180,7 +149,7 @@ onMounted(async () => {
       <div>
         <span class="eyebrow">设置</span>
         <h1>服务与音源</h1>
-        <p>配置登录 Cookie、导入链接，并查看 MusicFree 接口信息</p>
+        <p>配置登录 Cookie、导入链接，并查看接口与客户端信息</p>
       </div>
       <button class="ghost-button" @click="loadMeta(true)"><i class="ri-refresh-line"></i> 刷新状态</button>
     </header>
@@ -195,7 +164,7 @@ onMounted(async () => {
         <i class="ri-server-line"></i>
         <div>
           <h2>服务状态</h2>
-          <p>Go 服务同时提供 Web 界面与 MusicFree JSON 接口</p>
+          <p>Go 服务同时提供 Web 界面与 JSON 接口</p>
         </div>
       </div>
       <div class="stat-grid">
@@ -223,8 +192,8 @@ onMounted(async () => {
         <button class="ghost-button small" @click="copyBase"><i class="ri-file-copy-line"></i> 复制接口地址</button>
       </div>
       <p class="hint">
-        在 MusicFree 中安装 <code>plugin.js</code> 后，将插件里的「API 地址」改成
-        <code>{{ apiBase }}</code>，即可搜索与播放本服务的全部音源。
+        安卓客户端与网页共用这个地址；在客户端首次打开时填写
+        <code>{{ apiBase }}</code> 即可。
       </p>
     </section>
 
@@ -310,26 +279,19 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="settings-card">
+        <section class="settings-card">
       <div class="card-title">
-        <i class="ri-plug-2-line"></i>
+        <i class="ri-smartphone-line"></i>
         <div>
-          <h2>MusicFree 插件</h2>
-          <p>插件与 Web 端共用同一套接口，支持搜索、歌单、专辑、排行榜、歌词与播放</p>
+          <h2>安卓客户端</h2>
+          <p>套壳 App，首次打开填写服务器地址，之后启动直接进入播放界面</p>
         </div>
       </div>
       <ol class="steps">
-        <li>安装 MusicFree 客户端（Android / 桌面端）。</li>
-        <li>在插件管理中选择「从本地安装」，导入项目 Release 中的 <code>plugin.js</code>。</li>
-        <li>打开插件设置，将 API 地址填写为 <code>{{ apiBase }}</code>。</li>
-        <li>也可以直接 <a class="text-button" href="/plugin.js" download="musicdl-plugin.js">下载 MusicFree 插件</a> · <a class="text-button" href="/mint-plugin.js" download="mint-plugin.js">下载 Mint-Music 插件</a>，安装后在插件设置中填写上面的 API 地址。
-          <div v-if="pluginTokenUrl" class="plugin-personal">
-            <p>个人 Mint-Music 插件地址（无需登录下载，已包含你的账号 Token）：</p>
-            <div class="api-row"><code>{{ pluginTokenUrl }}</code><button class="text-button" @click="copyPluginToken">复制</button></div>
-            <p class="hint">此地址等同账号凭证，请勿分享；泄露后请点击重置。</p>
-            <button class="ghost-button" @click="resetPluginToken">重置插件 Token</button>
-          </div></li>
-        <li>回到首页即可搜索各平台音乐。</li>
+        <li>在 GitHub Release 中下载并安装 <code>musicdl-ex-&lt;版本&gt;.apk</code>。</li>
+        <li>首次打开时填写本机地址：<code>{{ apiBase }}</code>。</li>
+        <li>点击「打开」后会记住地址，下次启动直接进入。</li>
+        <li>需要更换地址时，点右上角菜单 → 「更改服务器地址」。</li>
       </ol>
     </section>
 

@@ -116,6 +116,28 @@ jobs:
           done
           ls -lh dist/fnos
 
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build Android shell APK
+        shell: bash
+        working-directory: android
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --console=plain assembleRelease
+          mkdir -p "${GITHUB_WORKSPACE}/dist/android"
+          cp app/build/outputs/apk/release/app-release.apk \
+            "${GITHUB_WORKSPACE}/dist/android/musicdl-ex-${{ steps.version.outputs.value }}-android.apk"
+          ls -lh "${GITHUB_WORKSPACE}/dist/android"
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -125,7 +147,7 @@ jobs:
           files: |
             dist/fnos/*.fpk
             dist/fnos/*.sha256
-            src/plugin/plugin.js
+            dist/android/*.apk
       - name: Sync FnDepot source manifest
         shell: bash
         env:

@@ -80,7 +80,6 @@ function submitSearch() {
             <i :class="meta.error ? 'ri-cloud-off-line' : 'ri-cloud-line'"></i>
             {{ meta.error ? '服务异常' : '在线' }}
           </span>
-          <router-link to="/settings" class="icon-button" title="设置"><i class="ri-settings-3-line"></i></router-link>
           <router-link v-if="auth.state.user" to="/settings" class="topbar-user" :title="auth.state.user.username">
             {{ userInitial }}
           </router-link>

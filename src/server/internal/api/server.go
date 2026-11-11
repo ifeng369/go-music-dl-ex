@@ -39,9 +39,6 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/healthz", s.handleHealth)
-	s.mux.HandleFunc("GET /plugin.js", s.handlePluginJS)
-	s.mux.HandleFunc("GET /mint-plugin.js", s.handleMintPluginJS)
-	s.mux.HandleFunc("GET /plugin/u/{token}/{file}", s.handlePersonalPlugin)
 	s.mux.HandleFunc("GET /api/version", s.handleHealth)
 	s.mux.HandleFunc("GET /api/sources", s.handleSources)
 	s.mux.HandleFunc("GET /api/detect", s.handleDetect)
@@ -83,8 +80,6 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("DELETE /api/users/{id}", s.requireAdmin(s.handleDeleteUser))
 	s.mux.HandleFunc("GET /api/me/library", s.requireUser(s.handleGetLibrary))
 	s.mux.HandleFunc("PUT /api/me/library", s.requireUser(s.handleSaveLibrary))
-	s.mux.HandleFunc("GET /api/me/plugin-token", s.requireUser(s.handleGetPluginToken))
-	s.mux.HandleFunc("POST /api/me/plugin-token/reset", s.requireUser(s.handleResetPluginToken))
 	s.mux.HandleFunc("GET /api/settings", s.requireAdmin(s.handleGetSettings))
 	s.mux.HandleFunc("PUT /api/settings", s.requireAdmin(s.handleSaveSettings))
 

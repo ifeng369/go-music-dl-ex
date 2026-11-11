@@ -5,7 +5,7 @@
 - **Web 播放器**：Vue 3 + Vite，暗色主题，搜索、按音源分组的推荐、分类歌单、排行榜、歌单/专辑、歌手、歌词、播放队列、全屏当前播放。
 - **多用户**：管理员可新增/删除用户；收藏、自建歌单、收藏歌单、播放记录、本地音乐按账号隔离并保存在服务端。
 - **下载目录**：管理员可在设置中配置全局下载目录，下载文件与本地音乐位于 `<下载目录>/<用户名>/`。
-- **MusicFree 插件**：单文件 `src/plugin/plugin.js`，把本项目的 JSON API 适配成 MusicFree 插件协议。
+- **安卓客户端**：`android/` 是套壳 WebView 工程，首次打开填写服务器地址，之后启动直接进入网页。
 - **飞牛 fnOS 应用**：GitHub Actions 在推送 `v*` 标签时自动编译 `.fpk`，一个服务端口同时提供 Web 和 MusicFree API。
 
 > 本项目只提供聚合与播放能力，不存储、不分发音乐文件。请遵守各音乐平台的服务条款和当地法律，仅将 Cookie/账号用于你拥有权限的内容。
@@ -17,10 +17,10 @@ source/                 # 上游 go-music-dl 的浅克隆（保持不改动，�
 src/
   server/               # Go API + 内嵌 Web 静态资源
     main.go
-    internal/api/       # JSON API（MusicFree 友好）
+    internal/api/       # JSON API
     internal/webassets/ # go:embed 的 Vite 构建产物
   web/                  # Vue 3 Web 客户端
-  plugin/plugin.js      # MusicFree 插件（无需构建）
+android/                # 套壳 WebView 安卓客户端（Gradle 工程）
 packaging/fnos/         # fnOS 原生应用模板与打包脚本
 .github/workflows/      # tag 触发的 Release 工作流
 scripts/update-source.sh
@@ -73,7 +73,7 @@ cd ../server && go build -trimpath -o musicdl-server .
 访问 http://127.0.0.1:8080 ，同一个端口同时提供：
 
 - Web UI：`/`
-- MusicFree API：`/api/*`
+- JSON API：`/api/*`
 - 健康检查：`/api/healthz`
 
 启动参数：
@@ -85,20 +85,22 @@ cd ../server && go build -trimpath -o musicdl-server .
 | `-web` | - | 空 | 用外部目录覆盖内嵌 Web 资源（调试用） |
 | `-version` | - | - | 打印版本 |
 
-## MusicFree 插件
+## 安卓客户端（APK）
 
-1. 打开 MusicFree → 插件管理 → 从本地安装，选择 `src/plugin/plugin.js`（也可以直接放到插件目录）。
-2. 安装后进入插件设置，把 **API 地址** 改成你的服务地址：
-   - 本机：`http://127.0.0.1:8080`
-   - 局域网/飞牛：`http://<NAS-IP>:18080`
-3. 支持搜索音乐/歌单/专辑/歌手、歌单与专辑详情、排行榜、推荐分类、歌词、播放地址、链接导入。
+套壳 WebView 客户端，不内置任何音源，只负责打开你的服务器页面：
 
-插件通过 `env.getUserVariables()` 读取 `apiBase`，默认 `http://127.0.0.1:8080`。插件只使用 MusicFree 注入的 HTTP 客户端（axios / fetch / needle），无 npm 依赖、无需构建。
+1. 在 GitHub Release 下载 `musicdl-ex-<版本>-android.apk` 并安装（允许「未知来源」）。
+2. 首次打开会要求填写服务器地址，例如 `http://192.168.1.10:18080`（可省略 `http://`）。
+3. 点「打开」后会记住地址，以后启动直接进入播放界面。
+4. 需要更换地址时：长按页面，或在有菜单键的设备上打开菜单 →「更改服务器地址」。
 
-插件目录参考：
+特点：
 
-- Android：`Android/data/fun.upup.musicfree/files/plugins`
-- Windows：`%APPDATA%/MusicFree/musicfree-plugins`
+- 全屏 WebView，支持 JavaScript、DOM Storage、Cookie、自动播放与明文 HTTP（局域网）。
+- 支持网页内的本地音乐导入（文件选择器）、后退键返回上一页。
+- 网络异常时页面会有提示，改地址不需要重装 App。
+- 安装包使用 Android 调试签名，仅供个人自建服务侧载安装。
+
 
 ## API 一览
 
@@ -128,7 +130,7 @@ cd ../server && go build -trimpath -o musicdl-server .
 | GET/POST | `/api/import` | 通过链接导入歌曲/歌单/专辑（`url`、`type`） |
 | GET/POST/DELETE | `/api/cookies` | 查看（脱敏）/保存/清除各平台 Cookie |
 
-MusicFree 插件使用的核心形状：
+接口使用的核心形状：
 
 ```jsonc
 // 搜索 / 详情
@@ -139,7 +141,7 @@ MusicFree 插件使用的核心形状：
 { "groups": [], "items": [], "errors": {} }
 ```
 
-歌曲对象中包含 `id`（`source:原始ID`）、`source`、`title`、`artist`、`album`、`duration`、`artwork`、`url`、`ext`、`extra` 等字段，插件会再映射成 MusicFree 的 `IMusicItem`。
+歌曲对象中包含 `id`（`source:原始ID`）、`source`、`title`、`artist`、`album`、`duration`、`artwork`、`url`、`ext`、`extra` 等字段。
 
 ## 飞牛 fnOS 应用
 
@@ -157,7 +159,7 @@ MusicFree 插件使用的核心形状：
 - 数据保存在 fnOS 包数据目录（`${TRIM_PKGVAR}`），升级不丢失；
 - 卸载时向导可选择是否删除数据。
 
-> 端口转发后，同一局域网内可直接把 MusicFree 插件的 API 地址设为 `http://<NAS-IP>:18080`。该 API 默认无鉴权，请勿直接暴露到公网。
+> 端口转发后，局域网内的安卓客户端填写 `http://<NAS-IP>:18080` 即可使用。请勿直接暴露到公网。
 
 ### 打包原理
 
@@ -195,7 +197,7 @@ git push origin v1.0.0
 3. `go test ./...`；
 4. 交叉编译 `linux/amd64`、`linux/arm64` 二进制（版本号通过 ldflags 注入）；
 5. 用 `fnpack` 生成 x86 与 ARM 两个 FPK，并生成 SHA-256；
-6. 创建 GitHub Release，上传两个 `.fpk`、校验文件和 `plugin.js`。
+6. 创建 GitHub Release，上传两个 `.fpk`、校验文件和安卓 `.apk`。
 
 ## 升级上游
 
@@ -212,7 +214,7 @@ cd src/server && go mod tidy && go build .
 - **播放无声/403**：部分平台需要 Cookie。在 Web 设置页或 `POST /api/cookies` 配置对应平台 Cookie。播放优先走 `/api/stream` 代理，已处理 Referer/UA/Range。
 - **搜索为空**：确认 `source` 拼写正确，并查看响应里的 `errors`（不同平台可用性不同）。
 - **fnOS 安装后打不开**：确认 18080 未被占用，查看包数据目录下 `musicdl-ex.log`；`cmd/main status` 应返回运行中。
-- **MusicFree 提示网络错误**：插件 API 地址必须能被手机访问；不要填 `127.0.0.1`（除非 MusicFree 与服务同机）。
+- **安卓客户端打不开**：确认手机能访问服务器，地址写成 `http://<NAS-IP>:18080`；注意不要填 `127.0.0.1`（除非与服务同机）。
 
 ## 致谢
 
@@ -220,29 +222,6 @@ cd src/server && go mod tidy && go build .
 - [maotoumao/MusicFree](https://github.com/maotoumao/MusicFree) 插件协议
 - [algerkong/AlgerMusicPlayer](https://github.com/algerkong/AlgerMusicPlayer) Web UI 参考
 ## 插件与源使用补充
-
-### MusicFree 插件
-- 在飞牛应用设置页点击“下载 MusicFree 插件”，或直接访问 `http://<NAS>:18080/plugin.js`。
-- 打开 MusicFree：设置 → 插件管理 → 从本地安装，选择 `plugin.js`。
-- 插件设置中填写 API 地址（从飞牛应用下载的插件会自动写入当前访问地址），并填写音乐库用户名和密码。
-- 支持搜索、歌单/专辑/歌手、播放、歌词、封面；播放失败会自动换源，换源结果会持久化。
-
-### Mint-Music 插件（LX 格式）
-- **必须从飞牛应用内下载**：登录飞牛应用 → 设置 → 「下载 Mint-Music 插件」，或使用页面上的个人插件地址。插件下载时会把应用地址和当前账号 Token 写入文件。
-- 不要使用 GitHub Release 里附带的插件文件：其中不含你的服务器地址和 Token，导入后会搜索失败、播放提示「无法获取播放链接」。
-- 打开 Mint-Music：设置 → 音源插件管理 → 导入本地插件，选择 `mint-plugin.js`。
-- 音源名称显示为 `MusicDL`。
-- 插件请求带 `Authorization: Bearer <Token>`，受账号权限约束；播放地址带 `access_token`。
-- 支持搜索、播放、歌词、封面；若宿主丢失/截断歌曲信息，插件会用搜索结果缓存自动补全。
-- 若之前装过旧版插件（v1.0.4 及更早），请先删除旧音源，再重新下载安装。
-
-### 每个用户独立的插件地址
-- 登录后打开「设置」，页面会显示当前账号的专属插件地址：
-  `http://<NAS>:18080/plugin/u/<个人Token>/mint-plugin.js`
-- 该地址在插件下载时直接写入个人 Token，**无需登录即可下载**，适合把插件发给对应账号用户。
-- 每个账号的 Token 不同；地址等同于账号凭证，请勿公开分享。
-- 设置页支持「复制」和「重置插件 Token」；重置后旧地址立即失效，需要重新下载插件。
-- 该 Token 同时用于插件接口鉴权（`Authorization: Bearer <Token>`），只拥有对应用户的权限。
 
 ### FnDepot 应用源
 - 在 FnDepot 中添加应用源：`https://github.com/ifeng369/go-music-dl-ex`

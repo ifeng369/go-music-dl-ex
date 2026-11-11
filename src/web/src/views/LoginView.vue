@@ -42,7 +42,7 @@ async function submit() {
         </div>
       </div>
       <h1>登录音乐库</h1>
-      <p class="login-desc">登录后使用我的音乐、本地音乐，并让 MusicFree 插件只读取你自己的内容。</p>
+      <p class="login-desc">登录后使用我的音乐、本地音乐，并按账号隔离收藏与播放记录。</p>
 
       <form class="login-form" @submit.prevent="submit">
         <label>

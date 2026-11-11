@@ -217,5 +217,3 @@ export const sourceNames = {
   spotify: 'Spotify',
   local: '本地',
 }
-api.pluginToken = () => get('/api/me/plugin-token')
-api.resetPluginToken = () => post('/api/me/plugin-token/reset')
