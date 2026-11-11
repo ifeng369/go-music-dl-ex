@@ -116,20 +116,54 @@ jobs:
           done
           ls -lh dist/fnos
 
+      - name: Detect Android changes
+        id: android
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prev="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+          if [ -z "${prev}" ]; then
+            echo "No previous tag, building the APK"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "previous tag: ${prev}"
+          if ! git diff --quiet "${prev}" "${GITHUB_SHA}" -- android; then
+            echo "android/ changed since ${prev}"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Nothing changed: reuse the APK from the previous release when it has one.
+          assets="$(gh release view "${prev}" --json assets --jq '[.assets[].name | select(endswith("-android.apk"))] | length' 2>/dev/null || echo 0)"
+          if [ "${assets}" = "0" ]; then
+            echo "previous release has no APK, building one"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "reusing the APK published with ${prev}"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up JDK
+        if: steps.android.outputs.changed == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Gradle
+        if: steps.android.outputs.changed == 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
 
       - name: Build Android shell APK
+        if: steps.android.outputs.changed == 'true'
         shell: bash
         working-directory: android
+        env:
+          APP_VERSION: ${{ steps.version.outputs.value }}
         run: |
           set -euo pipefail
           gradle --no-daemon --console=plain assembleRelease
@@ -137,6 +171,20 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk \
             "${GITHUB_WORKSPACE}/dist/android/musicdl-ex-${{ steps.version.outputs.value }}-android.apk"
           ls -lh "${GITHUB_WORKSPACE}/dist/android"
+
+      - name: Reuse previous Android APK
+        if: steps.android.outputs.changed == 'false'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prev="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^")"
+          mkdir -p dist/android
+          gh release download "${prev}" --pattern '*-android.apk' --dir dist/android --clobber
+          src="$(ls dist/android/*-android.apk | head -n1)"
+          mv "${src}" "dist/android/musicdl-ex-${{ steps.version.outputs.value }}-android.apk"
+          ls -lh dist/android
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

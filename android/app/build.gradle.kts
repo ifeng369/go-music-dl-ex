@@ -2,6 +2,11 @@ plugins {
     id("com.android.application")
 }
 
+// The release workflow injects the tag version so every APK reports a build
+// number that matches the release it was published with.
+val appVersion = System.getenv("APP_VERSION") ?: "1.0.0"
+val versionParts = appVersion.split(".").mapNotNull { it.toIntOrNull() }
+
 android {
     namespace = "com.musicdl.shell"
     compileSdk = 34
@@ -10,8 +15,10 @@ android {
         applicationId = "com.musicdl.shell"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = versionParts.getOrElse(0) { 1 } * 10000 +
+            versionParts.getOrElse(1) { 0 } * 100 +
+            versionParts.getOrElse(2) { 0 }
+        versionName = appVersion
     }
 
     buildTypes {
