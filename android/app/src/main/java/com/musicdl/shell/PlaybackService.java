@@ -56,6 +56,7 @@ public class PlaybackService extends Service {
     private String album = "";
     private String artworkUrl = "";
     private boolean playing;
+    private boolean liked;
     private boolean hasQueue;
     private long durationMs;
     private long positionMs;

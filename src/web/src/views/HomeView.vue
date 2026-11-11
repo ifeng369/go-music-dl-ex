@@ -4,6 +4,9 @@ import { api } from '../api'
 import { loadMeta, meta, sourceName } from '../meta'
 import SectionHeader from '../components/SectionHeader.vue'
 import SheetGrid from '../components/SheetGrid.vue'
+import SongList from '../components/SongList.vue'
+import { player } from '../player'
+import { buildDaily, buildLiked, buildRandom, recs } from '../recs'
 import { library } from '../library'
 
 const loading = ref(true)
@@ -146,7 +149,30 @@ async function load() {
   }
 }
 
+const dailySubtitle = computed(() => {
+  const stamp = recs.daily.generatedAt
+  if (!stamp) return '每天 6:00 根据各平台推荐生成 50 首'
+  const time = new Date(stamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return `每天 6:00 更新 · 上次 ${time}`
+})
+
+function playRec(songs, mode, index = 0) {
+  if (!songs.length) return
+  player.playSongs(songs, index)
+  // Set after playSongs, which resets the flag for normal lists.
+  player.state.randomMode = mode === 'random'
+}
+
+async function refreshLiked() {
+  await buildLiked(true)
+}
+
 onMounted(load)
+onMounted(() => {
+  buildDaily()
+  buildLiked()
+  buildRandom()
+})
 </script>
 
 <template>
@@ -176,27 +202,64 @@ onMounted(load)
       <button class="text-button" @click="load">重试</button>
     </div>
 
-    <section class="section home-daily">
-      <SectionHeader title="每日推荐" subtitle="每天为你换一批推荐歌单" />
-      <SheetGrid :items="dailySheets" :loading="loading" empty-text="暂无每日推荐" />
-    </section>
-
-    <section class="section">
-      <SectionHeader
-        title="你喜欢听"
-        subtitle="来自你收藏的歌单"
-        :to="{ name: 'my-playlists' }"
-        more-text="收藏歌单"
+        <section class="section home-daily">
+      <SectionHeader title="每日推荐" :subtitle="dailySubtitle" />
+      <div class="rec-actions">
+        <button class="primary-button" :disabled="!recs.daily.songs.length" @click="playRec(recs.daily.songs, 'daily', 0)">
+          <i class="ri-play-fill"></i> 播放全部
+        </button>
+        <span class="rec-count">{{ recs.daily.songs.length }} 首 · 每天 6:00 更新</span>
+      </div>
+      <SongList
+        :songs="recs.daily.songs.slice(0, 8)"
+        compact
+        :loading="recs.loading.daily && !recs.daily.songs.length"
+        empty-text="正在为你生成每日推荐…"
+        @play="playRec(recs.daily.songs, 'daily', $event)"
       />
-      <SheetGrid :items="likedSheets" :loading="loading" empty-text="还没有收藏歌单，去歌单页点收藏吧" />
     </section>
 
     <section class="section">
-      <SectionHeader title="随便听听" subtitle="从全部推荐里随机挑一批" />
-      <SheetGrid :items="randomSheets" :loading="loading" empty-text="暂无推荐歌单" />
+      <SectionHeader title="你喜欢听" subtitle="根据本地歌曲、我的歌单和收藏音乐的偏好推荐">
+        <template #actions>
+          <button class="text-button" :disabled="recs.loading.liked" @click="refreshLiked">
+            <i class="ri-refresh-line"></i> 换一批
+          </button>
+        </template>
+      </SectionHeader>
+      <div class="rec-actions">
+        <button class="primary-button" :disabled="!recs.liked.songs.length" @click="playRec(recs.liked.songs, 'liked', 0)">
+          <i class="ri-play-fill"></i> 播放全部
+        </button>
+        <span class="rec-count">{{ recs.liked.songs.length }} 首 · 每次点击重新生成</span>
+      </div>
+      <SongList
+        :songs="recs.liked.songs.slice(0, 8)"
+        compact
+        :loading="recs.loading.liked && !recs.liked.songs.length"
+        empty-text="多听几首歌，这里就会更懂你"
+        @play="playRec(recs.liked.songs, 'liked', $event)"
+      />
     </section>
 
-<template v-if="loading">
+    <section class="section">
+      <SectionHeader title="随便听听" subtitle="随机 20 首，快播完时自动补充" />
+      <div class="rec-actions">
+        <button class="primary-button" :disabled="!recs.random.songs.length" @click="playRec(recs.random.songs, 'random', 0)">
+          <i class="ri-play-fill"></i> 播放全部
+        </button>
+        <span class="rec-count">{{ recs.random.songs.length }} 首 · 剩余 2 首自动续 20 首</span>
+      </div>
+      <SongList
+        :songs="recs.random.songs.slice(0, 8)"
+        compact
+        :loading="recs.loading.random && !recs.random.songs.length"
+        empty-text="正在随机挑选…"
+        @play="playRec(recs.random.songs, 'random', $event)"
+      />
+    </section>
+
+    <template v-if="loading">
       <section class="section">
         <div class="section-header">
           <div class="section-title"><h2>推荐歌单</h2></div>

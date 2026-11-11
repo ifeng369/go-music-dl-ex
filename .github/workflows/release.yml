@@ -152,6 +152,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Check signing key
+        if: steps.android.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          keytool -list -keystore android/keystore/musicdl-release.p12 \
+            -storetype PKCS12 -storepass musicdl2024 -alias musicdl
+
       - name: Set up Gradle
         if: steps.android.outputs.changed == 'true'
         uses: gradle/actions/setup-gradle@v4

@@ -12,6 +12,13 @@ export const library = reactive({
   sheetFavorites: [],
   // The play queue lives on the server too so another device can continue.
   playerQueue: { songs: [], index: 0, currentTime: 0 },
+  // Generated lists plus the recent-seen index used for de-duplication.
+  recs: {
+    daily: { cycle: '', songs: [], generatedAt: 0 },
+    liked: { songs: [], generatedAt: 0 },
+    random: { cycle: '', songs: [], generatedAt: 0 },
+    seen: {},
+  },
 })
 
 let currentUserID = null
@@ -99,11 +106,19 @@ function applyData(data) {
     index: Math.max(0, Number(queue && queue.index) || 0),
     currentTime: Math.max(0, Number(queue && queue.currentTime) || 0),
   }
+  const savedRecs = data && data.recs
+  if (savedRecs && typeof savedRecs === 'object') {
+    library.recs = {
+      daily: savedRecs.daily || { cycle: '', songs: [], generatedAt: 0 },
+      liked: savedRecs.liked || { songs: [], generatedAt: 0 },
+      random: savedRecs.random || { cycle: '', songs: [], generatedAt: 0 },
+      seen: savedRecs.seen && typeof savedRecs.seen === 'object' ? savedRecs.seen : {},
+    }
+  }
   library.favorites = uniqueSongs(data && data.favorites)
   library.history = uniqueSongs(data && data.history)
   library.sheetFavorites = uniqueSheets(data && data.sheetFavorites)
-  library.playlists = Array.isArray(data && data.playlists)
-    ? data.playlists
+  library.playlists = Array.isArray(data && data.playlists)    ? data.playlists
         .filter((item) => item && item.id && item.name)
         .map((item) => ({
           id: String(item.id),
@@ -122,6 +137,7 @@ function serialize() {
     playlists: library.playlists,
     sheetFavorites: library.sheetFavorites,
     playerQueue: library.playerQueue,
+    recs: library.recs,
   }
 }
 

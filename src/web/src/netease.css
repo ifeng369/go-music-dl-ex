@@ -3183,3 +3183,33 @@ a,
   margin-left: auto;
   margin-right: auto;
 }
+
+/* Generated list headers: play-all button plus a hint line. */
+.rec-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -4px 0 12px;
+  flex-wrap: wrap;
+}
+
+.rec-actions .primary-button {
+  height: 34px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+.rec-count {
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
+.section-header .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 15px;
+  background: #f4f4f7;
+}

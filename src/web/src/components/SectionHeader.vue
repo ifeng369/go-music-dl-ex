@@ -13,6 +13,7 @@ defineProps({
       <h2>{{ title }}</h2>
       <span v-if="subtitle" class="section-subtitle">{{ subtitle }}</span>
     </div>
+    <slot name="actions"></slot>
     <router-link v-if="to" :to="to" class="section-more">
       {{ moreText }} <i class="ri-arrow-right-s-line"></i>
     </router-link>

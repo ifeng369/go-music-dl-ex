@@ -24,6 +24,7 @@ const state = reactive({
   lyricIndex: -1,
   showQueue: false,
   showNowPlaying: false,
+  randomMode: false,
   alternatives: [],
   alternativesLoading: false,
   switching: false,
@@ -302,6 +303,7 @@ function playAt(index, options = {}) {
   audio.src = streamUrl(song)
   updateMediaSession(song)
   loadLyric(song)
+  maybeExtendRandom()
   audio.play().catch((error) => {
     state.loading = false
     state.playing = false
@@ -379,6 +381,28 @@ async function precheckQueue(songs) {
   await Promise.all([worker(), worker(), worker()])
 }
 
+
+// The random list extends itself: when only two tracks are left, fetch 20 more
+// that were not generated in the last seven days.
+let randomExtending = false
+async function maybeExtendRandom() {
+  if (!state.randomMode) return
+  if (state.queue.length - state.index > 2) return
+  if (randomExtending) return
+  randomExtending = true
+  try {
+    const { nextRandomBatch } = await import('./recs')
+    const more = await nextRandomBatch(20)
+    for (const song of more) {
+      if (!state.queue.some((item) => item.id === song.id)) state.queue.push(song)
+    }
+  } catch {
+    // Ignore: the next track still plays from what is already queued.
+  } finally {
+    randomExtending = false
+  }
+}
+
 function playSongs(songs, start = 0) {
   const list = (songs || []).map(applySourceOverride).filter((song) => song && song.source && (song.sourceId || song.id))
   if (!list.length) return
@@ -386,6 +410,7 @@ function playSongs(songs, start = 0) {
   hydrateLocalSongs(list).then((resolved) => {
     if (token !== playToken) return
     state.queue = resolved
+    state.randomMode = false
     playAt(Math.min(Math.max(0, start), resolved.length - 1))
     precheckQueue(resolved)
   })
