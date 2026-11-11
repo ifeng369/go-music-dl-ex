@@ -2593,30 +2593,41 @@ kbd {
   }
 }
 
-/* Keep the vinyl perfectly round: the circle is clipped on the container with
-   a plain border-radius, not on the rotating image. Chromium approximates a
-   clip-path circle on a compositing layer as a polygon, which chamfered the
-   corners, so only border-radius + overflow is used here. */
+/* The disc is clipped by the container and the artwork is zoomed inside it.
+   Many album covers ship with a decorative border (a cream "sticker" edge in
+   this case), so a plain 100% image leaves that border visible inside the
+   circle. Slight over-scale pushes the border outside the visible disc so the
+   artwork fills the whole circle. */
 .now-stage .now-art {
   border-radius: 50%;
   overflow: hidden;
   isolation: isolate;
+  background: #f1f1f5;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .now-stage .now-art img {
+  display: block;
+  width: 130%;
+  height: 130%;
+  max-width: none;
+  margin-left: -15%;
+  margin-top: -15%;
+  object-fit: cover;
   border-radius: 0;
   clip-path: none;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Never rotate the clipped image: a transformed child makes Chromium build a
-   coarse polygon mask for the rounded clip, which chamfers the cover corners.
-   A static image is clipped to an exact circle. */
-.now-stage .now-art img {
   animation: none;
   transform: none;
+}
+
+.now-stage .now-art .now-art-fallback {
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.now-stage .now-art-ring {
+  border-radius: 50%;
 }
 
 /* Default artwork for playlists and cards without a cover image. */
