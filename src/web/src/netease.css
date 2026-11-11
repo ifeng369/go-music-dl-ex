@@ -2190,7 +2190,7 @@ kbd {
 
   .player-controls {
     order: 2;
-    gap: 2px;
+    gap: 8px;
   }
 
   /* Compact phone bar: only like / play / queue. */
@@ -2218,15 +2218,22 @@ kbd {
 
   .player-bar.now-open .player-controls {
     width: 100%;
-    gap: 6px;
-    padding: 0 4px;
+    gap: 16px;
+    padding: 0 6px;
   }
 
   .player-bar.now-open .player-controls .icon-button {
     display: grid;
-    width: 32px;
-    height: 32px;
-    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+  }
+
+  .player-bar.now-open .player-controls .prev-button,
+  .player-bar.now-open .player-controls .next-button {
+    width: 42px;
+    height: 42px;
+    font-size: 28px;
   }
 
   .player-bar.now-open .player-controls .mode-button {
@@ -2238,9 +2245,9 @@ kbd {
   }
 
   .player-bar.now-open .play-button {
-    width: 44px;
-    height: 44px;
-    font-size: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
   }
 
   .play-button {
@@ -2583,5 +2590,29 @@ kbd {
     width: auto;
     bottom: calc(var(--player-h) + 10px);
     max-height: 66vh;
+  }
+}
+
+/* Keep the vinyl perfectly round: the circle is clipped on the container, not
+   on the rotating image. A rotated, rounded layer is sometimes approximated as
+   a polygon by the compositor, which left chamfered corners on the cover. */
+.now-stage .now-art {
+  border-radius: 50%;
+  overflow: hidden;
+  clip-path: circle(50% at 50% 50%);
+  isolation: isolate;
+}
+
+.now-stage .now-art img {
+  border-radius: 0;
+  clip-path: none;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 900px) {
+  .now-stage .now-art {
+    clip-path: circle(50% at 50% 50%);
   }
 }
