@@ -1,8 +1,38 @@
 <script setup>
+import { nextTick, ref, watch } from 'vue'
 import { formatDuration } from '../api'
 import { player } from '../player'
 
 const state = player.state
+const listRef = ref(null)
+
+/** Centres the playing row inside the panel without scrolling the page. */
+function scrollToCurrent() {
+  const list = listRef.value
+  if (!list) return
+  const row = list.querySelector('.queue-row.active')
+  if (!row) return
+  const offset = row.offsetTop - list.clientHeight / 2 + row.clientHeight / 2
+  list.scrollTop = Math.max(0, offset)
+}
+
+watch(
+  () => state.showQueue,
+  async (open) => {
+    if (!open) return
+    await nextTick()
+    requestAnimationFrame(scrollToCurrent)
+  },
+)
+
+watch(
+  () => state.index,
+  async () => {
+    if (!state.showQueue) return
+    await nextTick()
+    requestAnimationFrame(scrollToCurrent)
+  },
+)
 
 function closeQueue() {
   state.showQueue = false
@@ -27,7 +57,7 @@ function closeQueue() {
             </button>
           </div>
         </header>
-        <div class="queue-list">
+        <div ref="listRef" class="queue-list">
           <div
             v-for="(song, index) in state.queue"
             :key="song.id + index"
