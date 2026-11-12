@@ -28,8 +28,7 @@ onMounted(async () => {
 
 function playAll() {
   if (!list.value.length) return
-  player.playSongs(list.value, 0)
-  player.state.extendMode = kind.value === 'random' || kind.value === 'liked' ? kind.value : ''
+  player.playSongs(list.value, 0, kind.value === 'random' || kind.value === 'liked' ? kind.value : '')
 }
 </script>
 

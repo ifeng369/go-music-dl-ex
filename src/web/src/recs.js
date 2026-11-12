@@ -187,10 +187,10 @@ export async function buildDaily(force = false) {
   recs.loading.daily = true
   recs.error = ''
   try {
-    let songs = takeFresh(await recommendationPool(), 150, DAILY_WINDOW)
+    let songs = takeFresh(await recommendationPool(), 80, DAILY_WINDOW)
     if (songs.length < 50) {
       const merged = dedupeSongs([...songs, ...(await likedPool())])
-      songs = takeFresh(merged, 150, DAILY_WINDOW)
+      songs = takeFresh(merged, 80, DAILY_WINDOW)
     }
     if (!songs.length) {
       songs = dedupeSongs([...(library.favorites || []), ...(library.history || [])]).slice(0, 50)
@@ -213,9 +213,9 @@ export async function buildLiked(force = false) {
   recs.loading.liked = true
   recs.error = ''
   try {
-    let songs = takeFresh(await likedPool(), 60, DAILY_WINDOW)
+    let songs = takeFresh(await likedPool(), 40, DAILY_WINDOW)
     if (songs.length < 20) {
-      songs = takeFresh(dedupeSongs([...songs, ...(await recommendationPool())]), 60, DAILY_WINDOW)
+      songs = takeFresh(dedupeSongs([...songs, ...(await recommendationPool())]), 40, DAILY_WINDOW)
     }
     songs = topUp(await verifyList(songs, 20), 20)
     recs.liked = { songs, generatedAt: Date.now() }
@@ -260,7 +260,7 @@ export async function buildRandom(force = false) {
   recs.loading.random = true
   recs.error = ''
   try {
-    const candidates = takeFresh(await recommendationPool(), 120, RANDOM_WINDOW)
+    const candidates = takeFresh(await recommendationPool(), 40, RANDOM_WINDOW)
     markSeen(songs)
     const verified = topUp(await verifyList(candidates, 20), 20)
     markSeen(verified)
@@ -292,7 +292,7 @@ export async function buildHot(force = false) {
     if (songs.length < 100) {
       songs = dedupeSongs([...songs, ...(await recommendationPool())])
     }
-    songs = songs.slice(0, 300)
+    songs = songs.slice(0, 150)
     songs = topUp(await verifyList(songs, 100), 100)
     recs.hot = { cycle, songs, generatedAt: Date.now() }
     syncToLibrary()
@@ -304,7 +304,11 @@ export async function buildHot(force = false) {
   return recs.hot.songs
 }
 
+const playableCache = new Set()
+
 async function songPlayable(song) {
+  const cacheKey = songKey(song)
+  if (cacheKey && playableCache.has(cacheKey)) return true
   try {
     const params = {
       source: song.source,
@@ -316,7 +320,9 @@ async function songPlayable(song) {
     }
     if (song.extra && Object.keys(song.extra).length) params.extra = JSON.stringify(song.extra)
     const data = await api.songUrl(params)
-    return Boolean(data && data.url)
+    const ok = Boolean(data && data.url)
+    if (ok && cacheKey) playableCache.add(cacheKey)
+    return ok
   } catch {
     return false
   }
@@ -340,11 +346,12 @@ async function bestAlternative(song) {
 }
 
 /** Keeps only playable tracks, swapped to another source when possible. */
-async function verifyList(candidates, target, concurrency = 5) {
+async function verifyList(candidates, target, concurrency = 8, budgetMs = 12000) {
   const verified = []
+  const deadline = Date.now() + budgetMs
   let cursor = 0
   async function worker() {
-    while (verified.length < target && cursor < candidates.length) {
+    while (verified.length < target && cursor < candidates.length && Date.now() < deadline) {
       const song = candidates[cursor]
       cursor += 1
       if (await songPlayable(song)) {

@@ -155,8 +155,7 @@ function coverOf(kind) {
 function playKind(kind) {
   const songs = recs[kind]?.songs || []
   if (!songs.length) return
-  player.playSongs(songs, 0)
-  player.state.extendMode = kind === 'random' || kind === 'liked' ? kind : ''
+  player.playSongs(songs, 0, kind === 'random' || kind === 'liked' ? kind : '')
 }
 
 onMounted(load)

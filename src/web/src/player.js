@@ -422,7 +422,7 @@ async function maybeExtendRandom() {
   }
 }
 
-function playSongs(songs, start = 0) {
+function playSongs(songs, start = 0, extendMode = '') {
   // Keep the original entries; a learned source is applied when each track plays.
   const list = (songs || []).filter((song) => song && song.source && (song.sourceId || song.id))
   if (!list.length) return
@@ -430,7 +430,7 @@ function playSongs(songs, start = 0) {
   hydrateLocalSongs(list).then((resolved) => {
     if (token !== playToken) return
     state.queue = resolved
-    state.extendMode = ''
+    state.extendMode = extendMode
     playAt(Math.min(Math.max(0, start), resolved.length - 1))
     precheckQueue(resolved)
   })
@@ -658,6 +658,7 @@ function preloadNext() {
   const nextIndex = (state.index + 1) % state.queue.length
   const song = state.queue[nextIndex]
   if (!song || !song.source || song.source === 'local' || !(song.sourceId || song.id)) return
+  if (nextIndex === state.index) return
   if (preloadedID === song.id) return
   preloadedID = song.id
   const params = {
@@ -669,17 +670,9 @@ function preloadNext() {
     duration: song.duration,
   }
   if (song.extra && Object.keys(song.extra).length) params.extra = JSON.stringify(song.extra)
+  // Only warm the resolve cache. A second <audio> element used to
+  // compete for bandwidth and could stall the playing track.
   api.songUrl(params).catch(() => {})
-  try {
-    if (!preloadEl) {
-      preloadEl = new Audio()
-      preloadEl.preload = 'auto'
-      preloadEl.muted = true
-    }
-    preloadEl.src = streamUrl(song)
-  } catch {
-    // Preloading is best effort.
-  }
 }
 
 function persistQueue(force = false) {
