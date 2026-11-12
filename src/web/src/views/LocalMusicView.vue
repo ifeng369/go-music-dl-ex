@@ -106,7 +106,8 @@ onMounted(load)
     <SongList
       :songs="songs"
       :loading="loading"
-      :show-source="false"
+      show-album
+      show-source
       :selectable="managing"
       :selected="selected"
       empty-text="还没有本地音乐，下载完成的歌曲会自动出现在这里"

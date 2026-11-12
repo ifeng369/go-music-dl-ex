@@ -3326,3 +3326,18 @@ a,
 .player-bar .like-button.active:hover i {
   color: var(--accent);
 }
+
+/* Generated and local list pages use the same full-width row layout as a
+   normal playlist detail page. */
+.rec-view,
+.library-view {
+  width: 100%;
+  max-width: 100%;
+}
+
+.rec-view .song-list,
+.library-view .song-list,
+.rec-view .song-row,
+.library-view .song-row {
+  width: 100%;
+}

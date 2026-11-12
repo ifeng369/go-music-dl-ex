@@ -55,6 +55,9 @@ function playAll() {
 
     <SongList
       :songs="list"
+      show-album
+      show-source
+      show-download
       :loading="recs.loading[kind] && !list.length"
       empty-text="正在生成…"
       @play="playAll"
