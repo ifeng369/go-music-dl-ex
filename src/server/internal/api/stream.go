@@ -77,7 +77,17 @@ func (s *Server) handleSongURL(w http.ResponseWriter, r *http.Request) {
 	}
 	meta := metaFromQuery(r)
 	extra := parseExtra(r.URL.Query().Get("extra"))
-	direct, err := resolveStreamURL(source, id, extra, meta)
+	var direct string
+	var err error
+	if user := s.currentUser(r); user != nil && s.opts.Store != nil {
+		cookieScopeMu.Lock()
+		restore := s.scopeToUser(user.ID)
+		direct, err = resolveStreamURL(source, id, extra, meta)
+		restore()
+		cookieScopeMu.Unlock()
+	} else {
+		direct, err = resolveStreamURL(source, id, extra, meta)
+	}
 	if err != nil {
 		writeError(w, http.StatusBadGateway, err.Error())
 		return
@@ -230,7 +240,17 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 		s.proxySoda(w, r, id, extra, meta)
 		return
 	}
-	direct, err := resolveStreamURL(source, id, extra, meta)
+	var direct string
+	var err error
+	if user := s.currentUser(r); user != nil && s.opts.Store != nil {
+		cookieScopeMu.Lock()
+		restore := s.scopeToUser(user.ID)
+		direct, err = resolveStreamURL(source, id, extra, meta)
+		restore()
+		cookieScopeMu.Unlock()
+	} else {
+		direct, err = resolveStreamURL(source, id, extra, meta)
+	}
 	if err != nil || strings.TrimSpace(direct) == "" {
 		msg := "failed to resolve stream url"
 		if err != nil {

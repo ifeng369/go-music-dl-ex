@@ -334,7 +334,12 @@ async function verifyList(candidates, target, concurrency = 5) {
         continue
       }
       const alternative = await bestAlternative(song)
-      if (alternative) verified.push(alternative)
+      if (alternative) {
+        // Remember the working source so playback never re-checks this track.
+        const { rememberSourceOverride } = await import('./player')
+        rememberSourceOverride(song, alternative)
+        verified.push(alternative)
+      }
     }
   }
   await Promise.all(Array.from({ length: concurrency }, worker))

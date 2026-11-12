@@ -12,6 +12,8 @@ export const library = reactive({
   sheetFavorites: [],
   // The play queue lives on the server too so another device can continue.
   playerQueue: { songs: [], index: 0, currentTime: 0 },
+  // Songs whose working source was discovered once, reused on later plays.
+  sourceOverrides: {},
   // Generated lists plus the recent-seen index used for de-duplication.
   recs: {
     daily: { cycle: '', songs: [], generatedAt: 0 },
@@ -107,6 +109,9 @@ function applyData(data) {
     index: Math.max(0, Number(queue && queue.index) || 0),
     currentTime: Math.max(0, Number(queue && queue.currentTime) || 0),
   }
+  if (data && data.sourceOverrides && typeof data.sourceOverrides === 'object') {
+    library.sourceOverrides = { ...data.sourceOverrides }
+  }
   const savedRecs = data && data.recs
   if (savedRecs && typeof savedRecs === 'object') {
     library.recs = {
@@ -140,6 +145,7 @@ function serialize() {
     sheetFavorites: library.sheetFavorites,
     playerQueue: library.playerQueue,
     recs: library.recs,
+    sourceOverrides: library.sourceOverrides,
   }
 }
 

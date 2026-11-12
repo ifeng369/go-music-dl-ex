@@ -3,14 +3,21 @@ package api
 import (
 	"net/http"
 	"strings"
-
-	"github.com/guohuiyuan/go-music-dl/core"
 )
 
 func (s *Server) handleGetCookies(w http.ResponseWriter, r *http.Request) {
-	all := core.CM.GetAll()
-	items := make(map[string]any, len(all))
-	for source, value := range all {
+	user := s.currentUser(r)
+	if user == nil || s.opts.Store == nil {
+		writeError(w, http.StatusUnauthorized, "请先登录")
+		return
+	}
+	stored, err := s.opts.Store.UserCookies(user.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "读取 Cookie 失败")
+		return
+	}
+	items := make(map[string]any, len(stored))
+	for source, value := range stored {
 		items[source] = map[string]any{
 			"configured": strings.TrimSpace(value) != "",
 			"preview":    maskSecret(value),
@@ -20,6 +27,11 @@ func (s *Server) handleGetCookies(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSetCookies(w http.ResponseWriter, r *http.Request) {
+	user := s.currentUser(r)
+	if user == nil || s.opts.Store == nil {
+		writeError(w, http.StatusUnauthorized, "请先登录")
+		return
+	}
 	var payload struct {
 		Source  string            `json:"source"`
 		Cookie  string            `json:"cookie"`
@@ -43,18 +55,33 @@ func (s *Server) handleSetCookies(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "nothing to update")
 		return
 	}
-	core.CM.SetAll(updates)
-	core.CM.Save()
+	for source, value := range updates {
+		if value == "" {
+			_ = s.opts.Store.DeleteUserCookie(user.ID, source)
+			continue
+		}
+		if err := s.opts.Store.SetUserCookie(user.ID, source, value); err != nil {
+			writeError(w, http.StatusInternalServerError, "保存 Cookie 失败")
+			return
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "updated": len(updates)})
 }
 
 func (s *Server) handleDeleteCookie(w http.ResponseWriter, r *http.Request) {
+	user := s.currentUser(r)
+	if user == nil || s.opts.Store == nil {
+		writeError(w, http.StatusUnauthorized, "请先登录")
+		return
+	}
 	source := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("source")))
 	if source == "" {
 		writeError(w, http.StatusBadRequest, "missing source")
 		return
 	}
-	core.CM.SetAll(map[string]string{source: ""})
-	core.CM.Save()
+	if err := s.opts.Store.DeleteUserCookie(user.ID, source); err != nil {
+		writeError(w, http.StatusInternalServerError, "删除 Cookie 失败")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "source": source})
 }

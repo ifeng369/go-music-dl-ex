@@ -138,11 +138,6 @@ async function load() {
       categories: home.categories || [],
     }
     cacheCategories(home.categories)
-    const available = categorySources.value.map((source) => source.id)
-    const initial = available.includes(categorySource.value)
-      ? categorySource.value
-      : (available[0] || 'netease')
-    await selectCategory(initial)
   } catch (err) {
     error.value = err.message || '加载失败'
   } finally {
@@ -163,6 +158,8 @@ function playKind(kind) {
   player.playSongs(songs, 0)
   player.state.extendMode = kind === 'random' || kind === 'liked' ? kind : ''
 }
+
+onMounted(load)
 
 onMounted(() => {
   // Show whatever is already cached before the server round-trip finishes.

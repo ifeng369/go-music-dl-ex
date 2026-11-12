@@ -34,7 +34,7 @@ func New(opts Options) *Server {
 }
 
 func (s *Server) Handler() http.Handler {
-	return s.recoverer(s.cors(s.logRequests(s.mux)))
+	return s.recoverer(s.cors(s.logRequests(s.withUserCookies(s.mux))))
 }
 
 func (s *Server) routes() {

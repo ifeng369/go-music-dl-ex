@@ -1,6 +1,6 @@
 import { computed, reactive, watch } from 'vue'
 import { api, lyricParams, streamUrl } from './api'
-import { addHistory, getPlayerQueue, isFavorite, onLibraryLoaded, savePlayerQueue, toggleFavorite } from './library'
+import { addHistory, getPlayerQueue, isFavorite, library, onLibraryLoaded, savePlayerQueue, toggleFavorite } from './library'
 import { hydrateLocalSongs } from './localdb'
 import { sourceName } from './meta'
 
@@ -96,6 +96,8 @@ function rememberSourceOverride(original, replacement) {
   if (original.id === replacement.id) return
   sourceOverrides[original.id] = { ...replacement }
   persistSourceOverrides()
+  // Keep the mapping on the server too, so every device resolves it directly.
+  library.sourceOverrides = { ...library.sourceOverrides, [original.id]: { ...replacement } }
 }
 let fallbackBusy = false
 
@@ -580,6 +582,8 @@ if ('mediaSession' in navigator) {
   navigator.mediaSession.setActionHandler('seekto', (details) => seek(details.seekTime))
 }
 
+export { rememberSourceOverride }
+
 export const player = {
   state,
   current,
@@ -763,6 +767,19 @@ async function restorePersistedQueue() {
 }
 
 restorePersistedQueue()
+// Merge source mappings learned on other devices.
+onLibraryLoaded(() => {
+  const stored = library.sourceOverrides || {}
+  let merged = false
+  for (const [id, song] of Object.entries(stored)) {
+    if (sourceOverrides[id]) continue
+    if (!song || !song.source) continue
+    sourceOverrides[id] = song
+    merged = true
+  }
+  if (merged) persistSourceOverrides()
+})
+
 // Adopt the queue stored on the server when this device has none yet.
 onLibraryLoaded(() => {
   if (state.queue.length) return

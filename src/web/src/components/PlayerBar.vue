@@ -46,7 +46,39 @@ function openNowPlaying() {
 
 // Whole-bar toggle: cover, song info and empty areas switch the playing view,
 // while transport buttons and sliders keep their own behaviour.
+let barTouch = null
+let barSwiped = false
+
+function onBarTouchStart(event) {
+  const point = event.touches && event.touches[0]
+  if (!point) return
+  const target = event.target
+  if (target && target.closest && target.closest('.t-slider, input')) {
+    barTouch = null
+    return
+  }
+  barTouch = { x: point.clientX, y: point.clientY }
+  barSwiped = false
+}
+
+function onBarTouchEnd(event) {
+  const start = barTouch
+  barTouch = null
+  const point = event.changedTouches && event.changedTouches[0]
+  if (!start || !point) return
+  const dx = point.clientX - start.x
+  const dy = point.clientY - start.y
+  if (Math.abs(dx) < 60 || Math.abs(dy) > 60) return
+  barSwiped = true
+  if (dx < 0) player.next()
+  else player.prev()
+  window.setTimeout(() => {
+    barSwiped = false
+  }, 350)
+}
+
 function onBarClick(event) {
+  if (barSwiped) return
   if (!current.value) return
   const target = event.target
   if (target && target.closest) {
@@ -65,7 +97,13 @@ function toggleLike() {
 </script>
 
 <template>
-  <footer class="player-bar" :class="{ clickable: Boolean(current), 'now-open': state.showNowPlaying }" @click="onBarClick">
+  <footer
+    class="player-bar"
+    :class="{ clickable: Boolean(current), 'now-open': state.showNowPlaying }"
+    @click="onBarClick"
+    @touchstart.passive="onBarTouchStart"
+    @touchend="onBarTouchEnd"
+  >
     <div class="player-track">
       <button class="player-cover" :class="{ spinning: state.playing }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" >
         <img v-if="current && current.artwork" :src="current.artwork" :alt="current.title" />
