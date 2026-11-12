@@ -60,6 +60,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/recommend", s.handleRecommend)
 	s.mux.HandleFunc("GET /api/categories", s.handleCategories)
 	s.mux.HandleFunc("GET /api/category/sheets", s.handleCategorySheets)
+	s.mux.HandleFunc("GET /api/resolve", s.handleResolve)
 	s.mux.HandleFunc("GET /api/user/playlists", s.handleUserPlaylists)
 	s.mux.HandleFunc("GET /api/home", s.handleHome)
 
