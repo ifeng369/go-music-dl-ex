@@ -180,7 +180,7 @@ onMounted(() => {
         <h1>一个入口，听见所有平台</h1>
         <p>网易云、QQ音乐、酷狗、酷我、咪咕、汽水、B站……<br />搜索、歌单、排行榜与歌词，一处搞定。</p>
         <div class="hero-actions">
-          <router-link :to="{ name: 'recommend' }" class="primary-button"><i class="ri-play-circle-line"></i> 开始探索</router-link>
+          <router-link :to="{ name: 'recommend', query: { source: group.source } }" class="primary-button"><i class="ri-play-circle-line"></i> 开始探索</router-link>
           <span class="hero-stat">
             <strong>{{ meta.sources.length || '—' }}</strong>
             <span>个音乐源在线</span>
@@ -239,7 +239,7 @@ onMounted(() => {
         <SectionHeader
           :title="`${sourceName(group.source)} 推荐`"
           :more-text="'全部 ' + allSheets.length + ' 个'"
-          :to="{ name: 'recommend' }"
+          :to="{ name: 'recommend', query: { source: group.source } }"
         />
         <SheetGrid :items="group.data.slice(0, 12)" empty-text="暂无推荐歌单" />
       </section>

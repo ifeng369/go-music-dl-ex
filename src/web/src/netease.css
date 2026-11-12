@@ -3410,3 +3410,14 @@ a,
   border-radius: 0 !important;
   padding: 0 !important;
 }
+
+/* Breathing room between the category chips and the sheet grid. */
+.recommend-grid {
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .recommend-grid {
+    margin-top: 12px;
+  }
+}

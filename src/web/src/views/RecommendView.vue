@@ -1,24 +1,30 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { api } from '../api'
-import { loadMeta, sourceName } from '../meta'
+import { loadMeta } from '../meta'
 import SheetGrid from '../components/SheetGrid.vue'
 
+const route = useRoute()
 const loading = ref(true)
 const error = ref('')
-const allSheets = ref([])
+const groups = ref([])
 const categories = ref([])
-const activeKey = ref('')
+const activeKey = ref('recommend')
 const sheetLoading = ref(false)
 const sheetError = ref('')
-const visibleSheets = ref([])
+const categorySheets = ref([])
 const cache = new Map()
+
+const sourceFilter = computed(() => String(route.query.source || ''))
+const RECOMMEND_KEY = 'recommend'
+const ALL_KEY = 'all'
 
 function keyOf(category) {
   return `${category.source}|${category.id}|${category.name}`
 }
 
-function collectSheets(home) {
+function collect(home) {
   const list = []
   const seen = new Set()
   const push = (item, fallbackSource) => {
@@ -36,16 +42,40 @@ function collectSheets(home) {
   return list
 }
 
+const allSheets = ref([])
+
+const recommendSheets = computed(() => {
+  const source = sourceFilter.value
+  const group = groups.value.find((item) => item.source === source)
+  if (group) {
+    return (group.data || []).map((item) => ({ ...item, source: group.source }))
+  }
+  // No source supplied: every platform's recommendation, merged.
+  return allSheets.value
+})
+
+const visibleCats = computed(() => {
+  const source = sourceFilter.value
+  return source ? categories.value.filter((item) => item.source === source) : categories.value
+})
+
+const visibleSheets = computed(() => {
+  if (activeKey.value === ALL_KEY) return allSheets.value
+  if (activeKey.value === RECOMMEND_KEY) return recommendSheets.value
+  return categorySheets.value
+})
+
 async function load() {
   loading.value = true
   error.value = ''
   try {
     const [home] = await Promise.all([api.home(), loadMeta()])
-    allSheets.value = collectSheets(home)
+    groups.value = home.recommendGroups || []
+    allSheets.value = collect(home)
     categories.value = (home.categories || []).filter(
       (item) => item && item.name && item.name.trim() !== '全部',
     )
-    visibleSheets.value = allSheets.value
+    activeKey.value = RECOMMEND_KEY
   } catch (err) {
     error.value = err.message || '加载失败'
   } finally {
@@ -53,26 +83,20 @@ async function load() {
   }
 }
 
-async function selectCategory(category) {
+async function selectChip(category) {
   if (!category) {
-    activeKey.value = ''
-    sheetError.value = ''
-    visibleSheets.value = allSheets.value
+    activeKey.value = RECOMMEND_KEY
     return
   }
-  const key = keyOf(category)
-  if (activeKey.value === key) {
-    selectCategory(null)
-    return
-  }
-  activeKey.value = key
+  activeKey.value = keyOf(category)
   sheetError.value = ''
-  if (cache.has(key)) {
-    visibleSheets.value = cache.get(key)
+  const cached = cache.get(activeKey.value)
+  if (cached) {
+    categorySheets.value = cached
     return
   }
   sheetLoading.value = true
-  visibleSheets.value = []
+  categorySheets.value = []
   try {
     const result = await api.categorySheets({
       source: category.source,
@@ -80,12 +104,12 @@ async function selectCategory(category) {
       name: category.name,
     })
     const items = (result.items || []).map((item) => ({ ...item, source: item.source || category.source }))
-    cache.set(key, items)
-    if (activeKey.value === key) visibleSheets.value = items
+    cache.set(activeKey.value, items)
+    if (activeKey.value === keyOf(category)) categorySheets.value = items
   } catch (err) {
-    if (activeKey.value === key) sheetError.value = err.message || '该分类加载失败'
+    sheetError.value = err.message || '该分类加载失败'
   } finally {
-    if (activeKey.value === key) sheetLoading.value = false
+    sheetLoading.value = false
   }
 }
 
@@ -98,7 +122,7 @@ onMounted(load)
       <div>
         <span class="eyebrow">发现音乐</span>
         <h1>推荐歌单</h1>
-        <p>先选分类，不选就显示全部推荐歌单。</p>
+        <p>默认显示当前平台的推荐歌单，选择分类可查看该类目。</p>
       </div>
     </header>
 
@@ -110,17 +134,25 @@ onMounted(load)
 
     <section class="section recommd-cats">
       <div v-if="loading" class="chip-row">
-        <span v-for="i in 18" :key="i" class="chip skeleton-chip"></span>
+        <span v-for="i in 16" :key="i" class="chip skeleton-chip"></span>
       </div>
-      <div v-else-if="categories.length" class="chip-row">
-        <button class="chip" :class="{ active: !activeKey }" @click="selectCategory(null)">全部</button>
+      <div v-else class="chip-row">
         <button
-          v-for="category in categories.slice(0, 60)"
+          class="chip"
+          :class="{ active: activeKey === RECOMMEND_KEY }"
+          @click="activeKey = RECOMMEND_KEY"
+        >
+          推荐
+        </button>
+        <button class="chip" :class="{ active: activeKey === ALL_KEY }" @click="activeKey = ALL_KEY">
+          全部
+        </button>
+        <button
+          v-for="category in visibleCats.slice(0, 60)"
           :key="keyOf(category)"
           class="chip"
           :class="{ active: activeKey === keyOf(category) }"
-          :title="sourceName(category.source)"
-          @click="selectCategory(category)"
+          @click="selectChip(category)"
         >
           {{ category.name }}
         </button>
@@ -132,10 +164,12 @@ onMounted(load)
       {{ sheetError }}
     </div>
 
-    <SheetGrid
-      :items="visibleSheets"
-      :loading="loading || sheetLoading"
-      :empty-text="activeKey ? '该分类暂无歌单' : '暂无推荐歌单'"
-    />
+    <div class="recommend-grid">
+      <SheetGrid
+        :items="visibleSheets"
+        :loading="loading || sheetLoading"
+        :empty-text="activeKey === RECOMMEND_KEY ? '该平台暂无推荐歌单' : '该分类暂无歌单'"
+      />
+    </div>
   </div>
 </template>
