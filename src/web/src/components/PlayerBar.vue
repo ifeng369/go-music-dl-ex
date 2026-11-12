@@ -118,6 +118,11 @@ function onBarClick(event) {
       return
     }
     if (target.closest('button, input, a, .t-slider')) return
+    // Desktop keeps the middle transport area inert: only the track block on
+    // the left or the tools on the right toggle the playing view.
+    if (!window.matchMedia('(max-width: 900px)').matches) {
+      if (!target.closest('.player-track') && !target.closest('.player-extra')) return
+    }
   }
   state.showNowPlaying = !state.showNowPlaying
 }

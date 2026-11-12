@@ -436,6 +436,18 @@ function playSongs(songs, start = 0, extendMode = '') {
   })
 }
 
+function playSongFrom(songs, index) {
+  const song = (songs || [])[index]
+  if (!song) return
+  const existing = state.queue.findIndex((item) => item.id === song.id)
+  if (existing >= 0) {
+    playAt(existing)
+    return
+  }
+  state.queue.push(song)
+  playAt(state.queue.length - 1)
+}
+
 function playSong(song) {
   playSongs([song], 0)
 }
@@ -561,7 +573,8 @@ audio.addEventListener('loadedmetadata', () => {
   // Several platforms return a 30-60s preview for restricted tracks. Treat it
   // as unplayable and let the fallback chain find the full version.
   const expected = Number(current.value && current.value.duration) || 0
-  if (real > 0 && expected > 0 && real < expected * 0.6 && real < 90) {
+  const looksShort = real > 0 && real < 90 && (expected <= 0 || real < expected * 0.6)
+  if (looksShort) {
     state.error = '当前为试听版本，正在切换完整音源…'
     tryNextFallback()
   }
@@ -624,6 +637,7 @@ export const player = {
   progress,
   playSongs,
   playSong,
+  playSongFrom,
   playAt,
   toggle,
   next,

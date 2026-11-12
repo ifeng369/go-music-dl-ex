@@ -111,7 +111,7 @@ onMounted(load)
       :selectable="managing"
       :selected="selected"
       empty-text="还没有本地音乐，下载完成的歌曲会自动出现在这里"
-      @play="player.playSongs(songs, $event)"
+      @play="player.playSongFrom(songs, $event)"
       @add="player.addToQueue([$event])"
       @select="toggleSelect"
     />

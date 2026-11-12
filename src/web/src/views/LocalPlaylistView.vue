@@ -72,7 +72,7 @@ function removeSong(index) {
       show-album
       show-remove
       empty-text="歌单还是空的，去搜索歌曲并点击列表中的歌单图标添加"
-      @play="player.playSongs(songs, $event)"
+      @play="player.playSongFrom(songs, $event)"
       @add="player.addToQueue([$event])"
       @remove="removeSong"
     />

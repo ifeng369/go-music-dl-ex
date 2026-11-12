@@ -187,7 +187,7 @@ watch(() => route.fullPath, load)
       show-album
       show-download
       :empty-text="error ? '歌曲加载失败' : '这个歌单还没有歌曲'"
-      @play="player.playSongs(songs, $event)"
+      @play="player.playSongFrom(songs, $event)"
       @add="player.addToQueue([$event])"
     />
   </div>

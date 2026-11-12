@@ -69,7 +69,7 @@ watch(() => route.fullPath, load)
       :loading="loading"
       show-album
       empty-text="没有找到该歌手的作品"
-      @play="player.playSongs(songs, $event)"
+      @play="player.playSongFrom(songs, $event)"
       @add="player.addToQueue([$event])"
     />
   </div>

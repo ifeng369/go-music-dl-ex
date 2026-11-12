@@ -44,7 +44,7 @@ function clearAll() {
       :songs="songs"
       show-album
       empty-text="还没有播放记录，播放一首歌曲后会自动记录"
-      @play="player.playSongs(songs, $event)"
+      @play="player.playSongFrom(songs, $event)"
       @add="player.addToQueue([$event])"
     />
   </div>

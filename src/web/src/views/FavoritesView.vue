@@ -44,7 +44,7 @@ function clearAll() {
       :songs="songs"
       show-album
       empty-text="还没有收藏歌曲，去发现一首喜欢的音乐吧"
-      @play="player.playSongs(songs, $event)"
+      @play="player.playSongFrom(songs, $event)"
       @add="player.addToQueue([$event])"
     />
   </div>
