@@ -579,9 +579,24 @@ audio.addEventListener('loadedmetadata', () => {
     tryNextFallback()
   }
 })
+let stallTicks = 0
 audio.addEventListener('timeupdate', () => {
   state.currentTime = audio.currentTime
   syncLyricIndex()
+  const total = Number(audio.duration) || 0
+  const played = Number(audio.currentTime) || 0
+  const bufferedEnd = audio.buffered.length ? audio.buffered.end(audio.buffered.length - 1) : 0
+  const stuck = total > 0 && played >= 20 && total - played > 20 && bufferedEnd > 0 && bufferedEnd - played < 2
+  if (stuck) {
+    stallTicks += 1
+    if (stallTicks >= 2) {
+      stallTicks = 0
+      state.error = '试听结束，正在切换完整音源…'
+      tryNextFallback()
+    }
+  } else {
+    stallTicks = 0
+  }
 })
 audio.addEventListener('play', () => {
   state.playing = true
@@ -614,7 +629,17 @@ audio.addEventListener('playing', () => {
 audio.addEventListener('canplay', () => {
   state.loading = false
 })
-audio.addEventListener('ended', () => next(true))
+audio.addEventListener('ended', () => {
+  const total = Number(audio.duration) || 0
+  const played = Number(audio.currentTime) || 0
+  if (total > 0 && played > 0 && total - played > 8) {
+    // The file ended well before its declared length: a truncated preview.
+    state.error = '试听结束，正在切换完整音源…'
+    tryNextFallback()
+    return
+  }
+  next(true)
+})
 audio.addEventListener('error', () => {
   state.loading = false
   state.playing = false
