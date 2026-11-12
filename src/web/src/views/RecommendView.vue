@@ -44,6 +44,13 @@ function collect(home) {
 
 const allSheets = ref([])
 
+// "全部" means all sheets of the current platform when a platform is set.
+const scopedSheets = computed(() => {
+  const source = sourceFilter.value
+  if (!source) return allSheets.value
+  return allSheets.value.filter((item) => item.source === source)
+})
+
 const recommendSheets = computed(() => {
   const source = sourceFilter.value
   const group = groups.value.find((item) => item.source === source)
@@ -51,7 +58,7 @@ const recommendSheets = computed(() => {
     return (group.data || []).map((item) => ({ ...item, source: group.source }))
   }
   // No source supplied: every platform's recommendation, merged.
-  return allSheets.value
+  return scopedSheets.value
 })
 
 const visibleCats = computed(() => {
@@ -60,7 +67,7 @@ const visibleCats = computed(() => {
 })
 
 const visibleSheets = computed(() => {
-  if (activeKey.value === ALL_KEY) return allSheets.value
+  if (activeKey.value === ALL_KEY) return scopedSheets.value
   if (activeKey.value === RECOMMEND_KEY) return recommendSheets.value
   return categorySheets.value
 })
