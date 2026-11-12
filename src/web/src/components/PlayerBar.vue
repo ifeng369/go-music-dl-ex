@@ -119,9 +119,12 @@ function onBarClick(event) {
     }
     if (target.closest('button, input, a, .t-slider')) return
     // Desktop keeps the middle transport area inert: only the track block on
-    // the left or the tools on the right toggle the playing view.
+    // Desktop: everything left of the slider (track block + left time) and
+    // everything right of it (right time + tools) toggles; the middle
+    // transport cluster stays inert.
     if (!window.matchMedia('(max-width: 900px)').matches) {
-      if (!target.closest('.player-track') && !target.closest('.player-extra')) return
+      const allowed = target.closest('.player-track') || target.closest('.player-extra') || target.closest('.time')
+      if (!allowed) return
     }
   }
   state.showNowPlaying = !state.showNowPlaying
