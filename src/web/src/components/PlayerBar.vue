@@ -123,7 +123,7 @@ function onBarClick(event) {
     // everything right of it (right time + tools) toggles; the middle
     // transport cluster stays inert.
     if (!window.matchMedia('(max-width: 900px)').matches) {
-      const allowed = target.closest('.player-track') || target.closest('.player-extra') || target.closest('.time')
+      const allowed = target.closest('.player-track') || target.closest('.player-extra')
       if (!allowed) return
     }
   }
