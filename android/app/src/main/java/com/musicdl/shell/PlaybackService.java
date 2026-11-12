@@ -36,7 +36,10 @@ public class PlaybackService extends Service {
     }
 
     private static final String TAG = "MusicDLPlayback";
-    private static final String CHANNEL_ID = "musicdl_playback";
+    // A new id is required: Android keeps the importance of an existing channel,
+    // so the earlier LOW channel would hide the media card on vivo lock screens.
+    private static final String LEGACY_CHANNEL_ID = "musicdl_playback";
+    private static final String CHANNEL_ID = "musicdl_playback_v2";
     private static final int NOTIFICATION_ID = 0x4d55;
 
     static final String ACTION_UPDATE = "com.musicdl.shell.UPDATE";
@@ -405,6 +408,8 @@ public class PlaybackService extends Service {
         if (manager == null) {
             return;
         }
+        NotificationChannel legacy = new NotificationChannel(LEGACY_CHANNEL_ID, "播放控制", NotificationManager.IMPORTANCE_LOW);
+        manager.deleteNotificationChannel(LEGACY_CHANNEL_ID);
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "播放控制",
                 NotificationManager.IMPORTANCE_DEFAULT);
         channel.setDescription("锁屏与通知栏的音乐播放控制");

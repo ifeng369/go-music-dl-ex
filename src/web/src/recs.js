@@ -196,7 +196,7 @@ export async function buildDaily(force = false) {
       songs = dedupeSongs([...(library.favorites || []), ...(library.history || [])]).slice(0, 50)
     }
     markSeen(songs)
-    songs = await verifyList(songs, 50)
+    songs = topUp(await verifyList(songs, 50), 50)
     markSeen(songs)
     recs.daily = { cycle, songs, generatedAt: Date.now() }
     syncToLibrary()
@@ -217,7 +217,7 @@ export async function buildLiked(force = false) {
     if (songs.length < 20) {
       songs = takeFresh(dedupeSongs([...songs, ...(await recommendationPool())]), 60, DAILY_WINDOW)
     }
-    songs = await verifyList(songs, 20)
+    songs = topUp(await verifyList(songs, 20), 20)
     recs.liked = { songs, generatedAt: Date.now() }
     syncToLibrary()
   } catch (err) {
@@ -236,15 +236,33 @@ export async function nextLikedBatch(count = 20) {
   return fresh
 }
 
+
+/** Keeps a list full even when many tracks fail the playability check. */
+function topUp(songs, target) {
+  if (songs.length >= target) return songs.slice(0, target)
+  const seen = new Set(songs.map(songKey))
+  const pools = [recs.daily.songs, recs.hot.songs, recs.liked.songs, recs.random.songs, library.favorites || []]
+  for (const pool of pools) {
+    for (const song of pool) {
+      if (songs.length >= target) break
+      const key = songKey(song)
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      songs.push(song)
+    }
+  }
+  return songs.slice(0, target)
+}
+
 export async function buildRandom(force = false) {
   const cycle = cycleKey()
   if (!force && recs.random.cycle === cycle && recs.random.songs.length) return recs.random.songs
   recs.loading.random = true
   recs.error = ''
   try {
-    const songs = takeFresh(await recommendationPool(), 60, RANDOM_WINDOW)
+    const candidates = takeFresh(await recommendationPool(), 120, RANDOM_WINDOW)
     markSeen(songs)
-    const verified = await verifyList(songs, 20)
+    const verified = topUp(await verifyList(candidates, 20), 20)
     markSeen(verified)
     recs.random = { cycle, songs: verified, generatedAt: Date.now() }
     syncToLibrary()
@@ -275,7 +293,7 @@ export async function buildHot(force = false) {
       songs = dedupeSongs([...songs, ...(await recommendationPool())])
     }
     songs = songs.slice(0, 300)
-    songs = await verifyList(songs, 100)
+    songs = topUp(await verifyList(songs, 100), 100)
     recs.hot = { cycle, songs, generatedAt: Date.now() }
     syncToLibrary()
   } catch (err) {
