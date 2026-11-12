@@ -255,9 +255,9 @@ func (s *Server) fetchCategories(sources []string) ([]CategoryItem, map[string]s
 func (s *Server) handleCategorySheets(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	source := strings.ToLower(strings.TrimSpace(q.Get("source")))
-	category := strings.TrimSpace(q.Get("category"))
+	category := strings.TrimSpace(q.Get("id"))
 	if category == "" {
-		category = strings.TrimSpace(q.Get("id"))
+		category = strings.TrimSpace(q.Get("category"))
 	}
 	// An empty category id means "all categories" upstream. MusicFree clients may
 	// send the display name instead of an empty id, so normalize it here.

@@ -109,6 +109,7 @@ async function selectChip(category) {
       source: category.source,
       id: category.id || '',
       name: category.name,
+      category: category.id ? '' : category.name,
     })
     const items = (result.items || []).map((item) => ({ ...item, source: item.source || category.source }))
     cache.set(activeKey.value, items)

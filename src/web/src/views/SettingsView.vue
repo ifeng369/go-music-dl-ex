@@ -15,6 +15,7 @@ const saving = ref('')
 const importing = ref(false)
 const importUrl = ref('')
 const importType = ref('')
+const APK_RELEASES_URL = 'https://github.com/ifeng369/go-music-dl-ex/releases/latest'
 
 const COOKIE_HELP = {
   netease: '电脑浏览器登录 music.163.com → F12 → Application/存储 → Cookies → music.163.com，复制 MUSIC_U；粘贴 MUSIC_U=xxx 或整条 Cookie 均可。',
@@ -304,6 +305,9 @@ onMounted(async () => {
           <p>套壳 App，首次打开填写服务器地址，之后启动直接进入播放界面</p>
         </div>
       </div>
+      <a class="primary-button apk-download" :href="APK_RELEASES_URL" target="_blank" rel="noopener">
+        <i class="ri-android-line"></i> 下载安卓客户端
+      </a>
       <ol class="steps">
         <li>在 GitHub Release 中下载并安装 <code>musicdl-ex-&lt;版本&gt;.apk</code>。</li>
         <li>首次打开时填写本机地址：<code>{{ apiBase }}</code>。</li>

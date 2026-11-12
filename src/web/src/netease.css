@@ -3433,3 +3433,12 @@ a,
     margin-bottom: 12px;
   }
 }
+
+/* Android client download button inside the settings card. */
+.apk-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 14px;
+  text-decoration: none;
+}
