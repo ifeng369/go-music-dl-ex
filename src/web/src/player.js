@@ -57,6 +57,9 @@ let playToken = 0
 let altToken = 0
 const altCache = new Map()
 let fallbackState = null
+// The queue song the listener actually picked, kept across source switches so a
+// learned mapping is always stored against the original track.
+let originalRef = null
 
 const SOURCE_OVERRIDE_KEY = 'musicdl.sourceOverrides.v1'
 
@@ -89,6 +92,15 @@ function applySourceOverride(song) {
     current = { ...sourceOverrides[current.id] }
   }
   return current
+}
+
+function forgetSourceOverride(original) {
+  if (!original || !original.id || !sourceOverrides[original.id]) return
+  delete sourceOverrides[original.id]
+  persistSourceOverrides()
+  const next = { ...(library.sourceOverrides || {}) }
+  delete next[original.id]
+  library.sourceOverrides = next
 }
 
 function rememberSourceOverride(original, replacement) {
@@ -240,7 +252,7 @@ async function tryNextFallback() {
       candidates: candidates.slice(0, 10),
       next: 0,
       tried: new Set([song.source]),
-      original: song,
+      original: originalRef || song,
     }
     state.alternatives = candidates
   }
@@ -258,6 +270,10 @@ async function tryNextFallback() {
   }
 
   state.switching = false
+  if (fallbackState && fallbackState.original) {
+    // Nothing plays this track any more; drop the learned mapping.
+    forgetSourceOverride(fallbackState.original)
+  }
   state.error = '播放失败，已尝试其他可用音源'
   fallbackState = null
   fallbackBusy = false
@@ -272,7 +288,7 @@ function switchSource(song) {
     candidates,
     next: selected >= 0 ? selected + 1 : 0,
     tried: new Set([currentSong.source, song.source]),
-    original: currentSong,
+    original: originalRef || currentSong,
   }
   state.error = ''
   applySource(song)
@@ -282,6 +298,7 @@ function playAt(index, options = {}) {
   let song = state.queue[index]
   if (!song) return
   if (!options.keepFallback) {
+    originalRef = song
     const resolved = applySourceOverride(song)
     if (resolved !== song) {
       song = resolved
@@ -406,7 +423,8 @@ async function maybeExtendRandom() {
 }
 
 function playSongs(songs, start = 0) {
-  const list = (songs || []).map(applySourceOverride).filter((song) => song && song.source && (song.sourceId || song.id))
+  // Keep the original entries; a learned source is applied when each track plays.
+  const list = (songs || []).filter((song) => song && song.source && (song.sourceId || song.id))
   if (!list.length) return
   const token = ++playToken
   hydrateLocalSongs(list).then((resolved) => {
@@ -555,8 +573,15 @@ audio.addEventListener('waiting', () => {
   state.loading = true
 })
 audio.addEventListener('playing', () => {
-  if (fallbackState && fallbackState.original && current.value && current.value.id !== fallbackState.original.id) {
-    rememberSourceOverride(fallbackState.original, current.value)
+  if (fallbackState && fallbackState.original && current.value) {
+    const original = fallbackState.original
+    const playingOriginal = current.value.id === original.id && current.value.source === original.source
+    if (playingOriginal) {
+      // The original source works again; the learned mapping is stale.
+      forgetSourceOverride(original)
+    } else if (current.value.id !== original.id) {
+      rememberSourceOverride(original, current.value)
+    }
   }
   state.loading = false
   state.switching = false
