@@ -8,11 +8,18 @@ import (
 	"github.com/guohuiyuan/go-music-dl/core"
 )
 
-// The upstream core keeps a single global CookieManager. Requests are scoped to
-// the signed-in account around each short source call so two users never share
-// credentials. Streaming is excluded here and scoped only around URL
-// resolution, so a long download never blocks other users.
-var cookieScopeMu sync.Mutex
+// The upstream core keeps one global CookieManager, so requests are scoped to
+// the signed-in account. A read/write gate lets every request of the *same*
+// user run concurrently (the common case) and only serialises while the active
+// cookie set is actually being switched to another account.
+var (
+	cookieGate       sync.RWMutex
+	activeCookieUser uint
+	activeCookieSet  bool
+
+	cookieCacheMu sync.Mutex
+	cookieCache   = map[uint]map[string]string{}
+)
 
 func replaceCookies(next map[string]string) {
 	current := core.CM.GetAll()
@@ -26,14 +33,59 @@ func replaceCookies(next map[string]string) {
 	}
 }
 
-func (s *Server) scopeToUser(userID uint) func() {
-	previous := core.CM.GetAll()
-	cookies, err := s.opts.Store.UserCookies(userID)
-	if err != nil {
-		return func() {}
+func (s *Server) userCookiesCached(userID uint) map[string]string {
+	cookieCacheMu.Lock()
+	if cached, ok := cookieCache[userID]; ok {
+		cookieCacheMu.Unlock()
+		return cached
 	}
-	replaceCookies(cookies)
-	return func() { replaceCookies(previous) }
+	cookieCacheMu.Unlock()
+
+	stored, err := s.opts.Store.UserCookies(userID)
+	if err != nil {
+		return map[string]string{}
+	}
+	cookieCacheMu.Lock()
+	cookieCache[userID] = stored
+	cookieCacheMu.Unlock()
+	return stored
+}
+
+// invalidateUserCookies must be called after a cookie change so the next
+// request reloads from the database.
+func (s *Server) invalidateUserCookies(userID uint) {
+	cookieCacheMu.Lock()
+	delete(cookieCache, userID)
+	cookieCacheMu.Unlock()
+
+	cookieGate.Lock()
+	if activeCookieUser == userID {
+		activeCookieSet = false
+	}
+	cookieGate.Unlock()
+}
+
+// enterUser makes the manager hold this account's cookies and returns the
+// release function for the caller's request.
+func (s *Server) enterUser(userID uint) func() {
+	cookies := s.userCookiesCached(userID)
+	for attempt := 0; attempt < 8; attempt++ {
+		cookieGate.RLock()
+		if activeCookieSet && activeCookieUser == userID {
+			return func() { cookieGate.RUnlock() }
+		}
+		cookieGate.RUnlock()
+
+		cookieGate.Lock()
+		if !activeCookieSet || activeCookieUser != userID {
+			replaceCookies(cookies)
+			activeCookieUser = userID
+			activeCookieSet = true
+		}
+		cookieGate.Unlock()
+	}
+	cookieGate.RLock()
+	return func() { cookieGate.RUnlock() }
 }
 
 func needsCookieScope(path string) bool {
@@ -42,8 +94,9 @@ func needsCookieScope(path string) bool {
 		return false
 	case strings.HasPrefix(path, "/api/auth/"), strings.HasPrefix(path, "/api/me/"):
 		return false
-	case path == "/api/home", path == "/api/cookies", path == "/api/settings",
-		path == "/api/healthz", path == "/api/version", path == "/api/sources", path == "/api/detect":
+	case path == "/api/cookies", path == "/api/home", path == "/api/category/sheets",
+		path == "/api/settings", path == "/api/healthz", path == "/api/version",
+		path == "/api/sources", path == "/api/detect":
 		return false
 	default:
 		return true
@@ -52,10 +105,7 @@ func needsCookieScope(path string) bool {
 
 func (s *Server) withUserCookies(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		// Metadata endpoints either do not touch sources or are already
-		// user-scoped, so they skip the shared cookie swap and stay fast.
-		if s.opts.Store == nil || !needsCookieScope(path) {
+		if s.opts.Store == nil || !needsCookieScope(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -64,12 +114,8 @@ func (s *Server) withUserCookies(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		cookieScopeMu.Lock()
-		restore := s.scopeToUser(user.ID)
-		defer func() {
-			restore()
-			cookieScopeMu.Unlock()
-		}()
+		release := s.enterUser(user.ID)
+		defer release()
 		next.ServeHTTP(w, r)
 	})
 }

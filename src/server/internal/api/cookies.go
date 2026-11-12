@@ -65,6 +65,7 @@ func (s *Server) handleSetCookies(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	s.invalidateUserCookies(user.ID)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "updated": len(updates)})
 }
 
@@ -83,5 +84,6 @@ func (s *Server) handleDeleteCookie(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "删除 Cookie 失败")
 		return
 	}
+	s.invalidateUserCookies(user.ID)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "source": source})
 }

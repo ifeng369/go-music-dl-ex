@@ -80,11 +80,9 @@ func (s *Server) handleSongURL(w http.ResponseWriter, r *http.Request) {
 	var direct string
 	var err error
 	if user := s.currentUser(r); user != nil && s.opts.Store != nil {
-		cookieScopeMu.Lock()
-		restore := s.scopeToUser(user.ID)
+		release := s.enterUser(user.ID)
 		direct, err = resolveStreamURL(source, id, extra, meta)
-		restore()
-		cookieScopeMu.Unlock()
+		release()
 	} else {
 		direct, err = resolveStreamURL(source, id, extra, meta)
 	}
@@ -243,11 +241,9 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	var direct string
 	var err error
 	if user := s.currentUser(r); user != nil && s.opts.Store != nil {
-		cookieScopeMu.Lock()
-		restore := s.scopeToUser(user.ID)
+		release := s.enterUser(user.ID)
 		direct, err = resolveStreamURL(source, id, extra, meta)
-		restore()
-		cookieScopeMu.Unlock()
+		release()
 	} else {
 		direct, err = resolveStreamURL(source, id, extra, meta)
 	}
