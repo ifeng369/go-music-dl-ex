@@ -298,11 +298,36 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && webView != null && webView.canGoBack()) {
-            webView.goBack();
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            onBackPressed();
             return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (webView == null) {
+            super.onBackPressed();
+            return;
+        }
+        // Let the page close its playing view / queue first: edge swipes on
+        // gesture navigation arrive here as a normal back press.
+        webView.evaluateJavascript(
+                "(function(){try{return window.__musicdlBack ? window.__musicdlBack() : false}catch(e){return false}})()",
+                new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String value) {
+                        if ("true".equals(value)) {
+                            return;
+                        }
+                        if (webView != null && webView.canGoBack()) {
+                            webView.goBack();
+                        } else {
+                            MainActivity.super.onBackPressed();
+                        }
+                    }
+                });
     }
 
     @Override

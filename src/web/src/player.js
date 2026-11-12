@@ -762,6 +762,19 @@ audio.addEventListener('pause', () => syncNativeState(true))
 audio.addEventListener('timeupdate', () => syncNativeState(false))
 
 if (typeof window !== 'undefined') {
+  // Android system back / edge swipe: close overlays before leaving the page.
+  window.__musicdlBack = () => {
+    if (state.showQueue) {
+      state.showQueue = false
+      return true
+    }
+    if (state.showNowPlaying) {
+      state.showNowPlaying = false
+      return true
+    }
+    return false
+  }
+
   window.__musicdlCommand = (command) => {
     const cmd = String(command || '')
     if (cmd === 'play') {

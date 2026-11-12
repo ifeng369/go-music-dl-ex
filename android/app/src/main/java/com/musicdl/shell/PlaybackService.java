@@ -343,6 +343,9 @@ public class PlaybackService extends Service {
 
         builder.setSmallIcon(R.drawable.ic_stat_music)
                 .setOnlyAlertOnce(true)
+                .setCategory(Notification.CATEGORY_TRANSPORT)
+                .setColorized(true)
+                .setColor(0xFFEC4141)
                 .setContentTitle(title.isEmpty() ? "MusicDL Ex" : title)
                 .setContentText(artist.isEmpty() ? (album.isEmpty() ? "正在播放" : album) : artist)
                 .setSubText(album.isEmpty() ? null : album)
@@ -403,7 +406,7 @@ public class PlaybackService extends Service {
             return;
         }
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "播放控制",
-                NotificationManager.IMPORTANCE_LOW);
+                NotificationManager.IMPORTANCE_DEFAULT);
         channel.setDescription("锁屏与通知栏的音乐播放控制");
         channel.setShowBadge(false);
         channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
