@@ -80,6 +80,9 @@ function onBarTouchEnd(event) {
 function onBarClick(event) {
   if (barSwiped) return
   if (!current.value) return
+  // Phones stay in the playing view when the bar is tapped; it is closed with a
+  // swipe down/left or the chevron. Only desktop toggles from the bar.
+  if (state.showNowPlaying && window.matchMedia('(max-width: 900px)').matches) return
   const target = event.target
   if (target && target.closest) {
     if (target.closest('.player-cover')) {
