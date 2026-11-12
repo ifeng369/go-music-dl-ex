@@ -3360,3 +3360,11 @@ a,
   text-shadow: inherit;
   -webkit-text-stroke: 0;
 }
+
+/* Step-by-step hint under every platform cookie row. */
+.cookie-help {
+  margin: 6px 0 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted-2);
+}

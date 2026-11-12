@@ -15,6 +15,22 @@ const saving = ref('')
 const importing = ref(false)
 const importUrl = ref('')
 const importType = ref('')
+
+const COOKIE_HELP = {
+  netease: '电脑浏览器登录 music.163.com → F12 → Application/存储 → Cookies → music.163.com，复制 MUSIC_U；粘贴 MUSIC_U=xxx 或整条 Cookie 均可。',
+  qq: '登录 y.qq.com → F12 → Application → Cookies → y.qq.com，复制 uin 与 qqmusic_key，拼成 uin=xxx; qqmusic_key=xxx。',
+  kugou: '登录 www.kugou.com → F12 → Cookies，复制 token 与 userid，拼成 token=xxx; userid=xxx。',
+  kuwo: '登录 www.kuwo.cn → F12 → Cookies，复制 kw_token 与 userid，拼成 kw_token=xxx; userid=xxx。',
+  migu: '登录 music.migu.cn → F12 → Cookies，复制 migu_music_sid（或整条 Cookie）粘贴即可。',
+  fivesing: '登录 5sing 网页版 → F12 → Cookies，复制整条 Cookie 粘贴即可。',
+  jamendo: '登录 jamendo.com → F12 → Cookies，复制整条 Cookie 粘贴即可。',
+  joox: '登录 joox.com → F12 → Cookies，复制整条 Cookie 粘贴即可。',
+}
+
+function cookieHelp(id) {
+  return COOKIE_HELP[id] || `在浏览器登录${sourceName(id)} → F12 → Application/存储 → Cookies，复制该域名的整条 Cookie 粘贴到上方输入框。`
+}
+
 const downloadDir = ref('')
 const defaultDownloadDir = ref('data/downloads')
 const savingDir = ref(false)
@@ -246,7 +262,7 @@ onMounted(async () => {
         <i class="ri-key-2-line"></i>
         <div>
           <h2>登录 Cookie</h2>
-          <p>部分平台需要 Cookie 才能搜索高音质或访问个人歌单，Cookie 仅保存在本机</p>
+          <p>部分平台需要 Cookie 才能搜索高音质或访问个人歌单；Cookie 保存在你的账号下，各用户互不影响</p>
         </div>
       </div>
       <div class="cookie-list">
@@ -260,6 +276,7 @@ onMounted(async () => {
               </small>
             </div>
           </div>
+          <p class="cookie-help">{{ cookieHelp(source.id) }}</p>
           <div class="cookie-controls">
             <input v-model="cookieForm[source.id]" type="password" :placeholder="`粘贴 ${sourceName(source.id)} Cookie`" />
             <button class="ghost-button small" :disabled="saving === source.id" @click="saveCookie(source.id)">
