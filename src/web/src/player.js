@@ -563,6 +563,7 @@ audio.addEventListener('playing', () => {
   fallbackState = null
   fallbackBusy = false
   state.error = ''
+  preloadNext()
 })
 audio.addEventListener('canplay', () => {
   state.loading = false
@@ -618,6 +619,41 @@ function loadPersistedQueue() {
     return data
   } catch {
     return null
+  }
+}
+
+// Warm the next track so pressing next starts almost instantly: resolve its
+// stream URL (server caches the result for a few minutes) and let a hidden
+// element buffer the first part of the file.
+let preloadEl = null
+let preloadedID = ''
+
+function preloadNext() {
+  if (!state.queue.length || state.index < 0) return
+  const nextIndex = (state.index + 1) % state.queue.length
+  const song = state.queue[nextIndex]
+  if (!song || !song.source || song.source === 'local' || !(song.sourceId || song.id)) return
+  if (preloadedID === song.id) return
+  preloadedID = song.id
+  const params = {
+    source: song.source,
+    id: song.sourceId || song.id,
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    duration: song.duration,
+  }
+  if (song.extra && Object.keys(song.extra).length) params.extra = JSON.stringify(song.extra)
+  api.songUrl(params).catch(() => {})
+  try {
+    if (!preloadEl) {
+      preloadEl = new Audio()
+      preloadEl.preload = 'auto'
+      preloadEl.muted = true
+    }
+    preloadEl.src = streamUrl(song)
+  } catch {
+    // Preloading is best effort.
   }
 }
 
