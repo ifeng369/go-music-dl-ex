@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Slider as TSlider } from 'tdesign-vue-next'
 import 'tdesign-vue-next/es/slider/style/index.css'
 import { formatDuration } from '../api'
@@ -50,6 +50,10 @@ let barTouch = null
 let barSwiped = false
 
 function onBarTouchStart(event) {
+  if (state.showNowPlaying) {
+    barTouch = null
+    return
+  }
   const point = event.touches && event.touches[0]
   if (!point) return
   const target = event.target
@@ -62,6 +66,10 @@ function onBarTouchStart(event) {
 }
 
 function onBarTouchEnd(event) {
+  if (state.showNowPlaying) {
+    barTouch = null
+    return
+  }
   const start = barTouch
   barTouch = null
   const point = event.changedTouches && event.changedTouches[0]
@@ -70,11 +78,31 @@ function onBarTouchEnd(event) {
   const dy = point.clientY - start.y
   if (Math.abs(dx) < 60 || Math.abs(dy) > 60) return
   barSwiped = true
-  if (dx < 0) player.next()
-  else player.prev()
+  slideTrack(dx < 0 ? 'next' : 'prev')
   window.setTimeout(() => {
     barSwiped = false
   }, 350)
+}
+
+/** Slides the whole track block out, swaps the song, then slides it in. */
+const trackAnim = ref('')
+let animTimer = null
+
+function slideTrack(direction) {
+  if (animTimer) {
+    window.clearTimeout(animTimer)
+    animTimer = null
+  }
+  trackAnim.value = direction === 'next' ? 'out-left' : 'out-right'
+  animTimer = window.setTimeout(() => {
+    if (direction === 'next') player.next()
+    else player.prev()
+    trackAnim.value = direction === 'next' ? 'in-right' : 'in-left'
+    animTimer = window.setTimeout(() => {
+      trackAnim.value = ''
+      animTimer = null
+    }, 20)
+  }, 180)
 }
 
 function onBarClick(event) {
@@ -107,7 +135,7 @@ function toggleLike() {
     @touchstart.passive="onBarTouchStart"
     @touchend="onBarTouchEnd"
   >
-    <div class="player-track">
+    <div class="player-track" :class="trackAnim">
       <button class="player-cover" :class="{ spinning: state.playing }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" >
         <img v-if="current && current.artwork" :src="current.artwork" :alt="current.title" />
         <i v-else class="ri-music-2-line"></i>

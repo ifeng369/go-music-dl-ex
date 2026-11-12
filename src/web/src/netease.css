@@ -3371,3 +3371,32 @@ a,
   line-height: 1.6;
   color: var(--muted-2);
 }
+
+/* Phone swipe between tracks: slide the whole block out, then in. */
+.player-track {
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.player-track.out-left {
+  transform: translateX(-60%);
+  opacity: 0;
+}
+
+.player-track.out-right {
+  transform: translateX(60%);
+  opacity: 0;
+}
+
+.player-track.in-left,
+.player-track.in-right {
+  transition: none;
+  opacity: 0;
+}
+
+.player-track.in-left {
+  transform: translateX(-60%);
+}
+
+.player-track.in-right {
+  transform: translateX(60%);
+}

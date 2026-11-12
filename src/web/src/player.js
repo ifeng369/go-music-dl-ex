@@ -556,7 +556,15 @@ function clearQueue() {
 }
 
 audio.addEventListener('loadedmetadata', () => {
-  state.duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : state.duration
+  const real = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0
+  if (real > 0) state.duration = real
+  // Several platforms return a 30-60s preview for restricted tracks. Treat it
+  // as unplayable and let the fallback chain find the full version.
+  const expected = Number(current.value && current.value.duration) || 0
+  if (real > 0 && expected > 0 && real < expected * 0.6 && real < 90) {
+    state.error = '当前为试听版本，正在切换完整音源…'
+    tryNextFallback()
+  }
 })
 audio.addEventListener('timeupdate', () => {
   state.currentTime = audio.currentTime
