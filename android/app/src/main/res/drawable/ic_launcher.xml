@@ -9,7 +9,20 @@
         android:fillColor="#EC4141"
         android:pathData="M0,0h108v108h-108z" />
 
+    <!-- Beamed pair of notes, matching the web favicon. -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M45,28 L82,43 L82,73 A9,9 0 1,1 73,64 L73,53 L54,45.5 L54,80 A9,9 0 1,1 45,71 Z" />
+        android:pathData="M34,24h44v10h-44z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,24h8v50h-8z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M70,24h8v44h-8z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M27,80a11,11 0 1,0 22,0a11,11 0 1,0 -22,0z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M63,74a11,11 0 1,0 22,0a11,11 0 1,0 -22,0z" />
 </vector>

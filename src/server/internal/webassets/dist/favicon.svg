@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108" role="img" aria-label="MusicDL Ex">
   <rect width="108" height="108" rx="24" fill="#EC4141"/>
-  <path fill="#FFFFFF" d="M45,28 L82,43 L82,73 A9,9 0 1,1 73,64 L73,53 L54,45.5 L54,80 A9,9 0 1,1 45,71 Z"/>
+  <g fill="#FFFFFF">
+    <rect x="34" y="24" width="44" height="10"/>
+    <rect x="34" y="24" width="8" height="50"/>
+    <rect x="70" y="24" width="8" height="44"/>
+    <circle cx="38" cy="80" r="11"/>
+    <circle cx="74" cy="74" r="11"/>
+  </g>
 </svg>
