@@ -24,6 +24,7 @@ const state = reactive({
   lyricIndex: -1,
   showQueue: false,
   showNowPlaying: false,
+  started: false,
   extendMode: '',
   alternatives: [],
   alternativesLoading: false,
@@ -322,6 +323,22 @@ function playAt(index, options = {}) {
   audio.src = streamUrl(song)
   updateMediaSession(song)
   loadLyric(song)
+  const probeParams = {
+    source: song.source,
+    id: song.sourceId || song.id,
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    duration: song.duration,
+    probe: 1,
+  }
+  if (song.extra && Object.keys(song.extra).length) probeParams.extra = JSON.stringify(song.extra)
+  api.songUrl(probeParams).then((info) => {
+    if (!info || !info.truncated) return
+    if (!current.value || current.value.id !== song.id) return
+    state.error = '该音源为试听片段，正在切换完整音源…'
+    tryNextFallback()
+  }).catch(() => {})
   maybeExtendRandom()
   audio.play().catch((error) => {
     state.loading = false
@@ -604,11 +621,13 @@ audio.addEventListener('play', () => {
 })
 audio.addEventListener('pause', () => {
   state.playing = false
+  state.started = false
 })
 audio.addEventListener('waiting', () => {
   state.loading = true
 })
 audio.addEventListener('playing', () => {
+  state.started = true
   if (fallbackState && fallbackState.original && current.value) {
     const original = fallbackState.original
     const playingOriginal = current.value.id === original.id && current.value.source === original.source
@@ -881,6 +900,22 @@ async function restorePersistedQueue() {
   }
   updateMediaSession(song)
   loadLyric(song)
+  const probeParams = {
+    source: song.source,
+    id: song.sourceId || song.id,
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    duration: song.duration,
+    probe: 1,
+  }
+  if (song.extra && Object.keys(song.extra).length) probeParams.extra = JSON.stringify(song.extra)
+  api.songUrl(probeParams).then((info) => {
+    if (!info || !info.truncated) return
+    if (!current.value || current.value.id !== song.id) return
+    state.error = '该音源为试听片段，正在切换完整音源…'
+    tryNextFallback()
+  }).catch(() => {})
 }
 
 restorePersistedQueue()

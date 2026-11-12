@@ -94,12 +94,22 @@ func (s *Server) handleSongURL(w http.ResponseWriter, r *http.Request) {
 	if raw := r.URL.Query().Get("extra"); raw != "" {
 		proxy += "&extra=" + url.QueryEscape(raw)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	payload := map[string]any{
 		"url":      direct,
 		"proxyUrl": proxy,
 		"source":   source,
 		"id":       id,
-	})
+	}
+	// Only the player asks for a probe: it costs one ranged request.
+	if r.URL.Query().Get("probe") == "1" {
+		if info, infoErr := fetchAudioInfo(direct, source); infoErr == nil {
+			payload["size"] = info.Size
+			payload["duration"] = info.Duration
+			payload["bitrate"] = info.Bitrate
+			payload["truncated"] = info.Truncated
+		}
+	}
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func resolveStreamURL(source, id string, extra map[string]string, meta itemMeta) (string, error) {

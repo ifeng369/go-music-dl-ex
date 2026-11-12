@@ -3421,3 +3421,15 @@ a,
     margin-top: 12px;
   }
 }
+
+/* Phones: the generated-list block sits directly under the top bar. The earlier
+   first-of-type rule hit the hidden hero, so target the block itself. */
+@media (max-width: 900px) {
+  .home-view .rec-section {
+    margin-top: 6px;
+  }
+
+  .home-view .rec-section .section-header {
+    margin-bottom: 12px;
+  }
+}

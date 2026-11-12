@@ -144,7 +144,7 @@ function toggleLike() {
     @touchend="onBarTouchEnd"
   >
     <div class="player-track" :class="trackAnim">
-      <button class="player-cover" :class="{ spinning: state.playing }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" >
+      <button class="player-cover" :class="{ spinning: state.started }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" >
         <img v-if="current && current.artwork" :src="current.artwork" :alt="current.title" />
         <i v-else class="ri-music-2-line"></i>
       </button>

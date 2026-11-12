@@ -198,7 +198,7 @@ onBeforeUnmount(() => {
       <div class="now-layout">
         <section class="now-stage">
           <template v-if="current">
-            <div class="now-art" :class="{ spinning: state.playing }">
+            <div class="now-art" :class="{ spinning: state.started }">
               <img v-if="current.artwork" :src="current.artwork" :alt="current.title" />
               <div v-else class="now-art-fallback"><i class="ri-music-2-line"></i></div>
               <span class="now-art-ring"></span>
