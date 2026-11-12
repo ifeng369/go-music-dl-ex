@@ -17,6 +17,7 @@ export const library = reactive({
     daily: { cycle: '', songs: [], generatedAt: 0 },
     liked: { songs: [], generatedAt: 0 },
     random: { cycle: '', songs: [], generatedAt: 0 },
+    hot: { cycle: '', songs: [], generatedAt: 0 },
     seen: {},
   },
 })
@@ -112,6 +113,7 @@ function applyData(data) {
       daily: savedRecs.daily || { cycle: '', songs: [], generatedAt: 0 },
       liked: savedRecs.liked || { songs: [], generatedAt: 0 },
       random: savedRecs.random || { cycle: '', songs: [], generatedAt: 0 },
+      hot: savedRecs.hot || { cycle: '', songs: [], generatedAt: 0 },
       seen: savedRecs.seen && typeof savedRecs.seen === 'object' ? savedRecs.seen : {},
     }
   }
@@ -229,6 +231,10 @@ const libraryLoadedListeners = []
 
 export function onLibraryLoaded(listener) {
   if (typeof listener === 'function') libraryLoadedListeners.push(listener)
+}
+
+export function isLibraryHydrated() {
+  return hydrated
 }
 
 export function getPlayerQueue() {

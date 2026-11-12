@@ -1,13 +1,14 @@
 import { reactive } from 'vue'
 import { api } from './api'
 import { library } from './library'
+import { loadMeta, meta } from './meta'
 
 /**
- * Three generated song lists:
- *  - daily  : rebuilt after 06:00, 50 tracks picked from platform recommendations
- *  - liked  : built from local songs / playlists / favourites, rebuilt on demand
- *  - random : 20 random tracks, extended by 20 whenever 2 are left
- * Tracks generated inside the freshness window are not reused.
+ * Four generated song lists kept on the server:
+ *  daily : 50 tracks, rebuilt once per 06:00 cycle
+ *  liked : 20 tracks from the listener's taste, extended by 20 near the end
+ *  random: 20 random tracks, extended by 20 near the end
+ *  hot   : up to 100 tracks taken from every platform toplist, in platform order
  */
 const DAILY_WINDOW = 30 * 24 * 60 * 60 * 1000
 const RANDOM_WINDOW = 7 * 24 * 60 * 60 * 1000
@@ -15,29 +16,33 @@ const RANDOM_WINDOW = 7 * 24 * 60 * 60 * 1000
 export const recs = reactive({
   daily: { cycle: '', songs: [], generatedAt: 0 },
   liked: { songs: [], generatedAt: 0 },
-  random: { songs: [], generatedAt: 0 },
-  loading: { daily: false, liked: false, random: false },
+  random: { cycle: '', songs: [], generatedAt: 0 },
+  hot: { cycle: '', songs: [], generatedAt: 0 },
+  loading: { daily: false, liked: false, random: false, hot: false },
   error: '',
 })
+
+export const REC_META = {
+  daily: { title: '每日推荐', desc: '每天 6:00 更新，50 首，来自各平台推荐' },
+  liked: { title: '你喜欢听', desc: '根据本地歌曲、我的歌单和收藏音乐的偏好生成，剩 2 首自动续 20 首' },
+  random: { title: '随便听听', desc: '每天 6:00 换 20 首，剩 2 首自动追加 20 首' },
+  hot: { title: '热门榜单', desc: '汇总各平台热门榜单 100 首，按平台热度顺序排列，每天 6:00 更新' },
+}
 
 export function songKey(song) {
   if (!song) return ''
   return `${song.source || ''}:${song.sourceId || song.id || ''}`
 }
 
-function cycleKey(date = new Date()) {
+export function cycleKey(date = new Date()) {
   const copy = new Date(date)
   if (copy.getHours() < 6) copy.setDate(copy.getDate() - 1)
   return `${copy.getFullYear()}-${String(copy.getMonth() + 1).padStart(2, '0')}-${String(copy.getDate()).padStart(2, '0')}`
 }
 
 function seenMap() {
-  if (!library.recs || typeof library.recs !== 'object') {
-    library.recs = { seen: {} }
-  }
-  if (!library.recs.seen || typeof library.recs.seen !== 'object') {
-    library.recs.seen = {}
-  }
+  if (!library.recs || typeof library.recs !== 'object') library.recs = { seen: {} }
+  if (!library.recs.seen || typeof library.recs.seen !== 'object') library.recs.seen = {}
   return library.recs.seen
 }
 
@@ -77,7 +82,6 @@ function dedupeSongs(list) {
   return out
 }
 
-/** Round-robin across sources so one provider cannot dominate a list. */
 function mixedPick(pool, count) {
   const buckets = new Map()
   for (const song of shuffle(pool)) {
@@ -100,40 +104,17 @@ function mixedPick(pool, count) {
   return picked
 }
 
-async function recommendationPool(sheetLimit = 4) {
+const THEMES = ['热歌', '新歌', '流行', '经典老歌', '华语', '轻音乐']
+
+async function recommendationPool() {
   const pool = []
-  try {
-    const home = await api.home()
-    const groups = (home.recommendGroups || []).slice(0, sheetLimit)
-    const jobs = []
-    for (const group of groups) {
-      for (const sheet of (group.data || []).slice(0, 3)) {
-        jobs.push(
-          api
-            .playlist({ source: group.source, id: sheet.id, title: sheet.title, limit: 80 })
-            .then((detail) => ({ group, songs: detail.musicList || [] }))
-            .catch(() => ({ group, songs: [] })),
-        )
-      }
-    }
-    for (const result of await Promise.all(jobs)) {
-      for (const song of result.songs) pool.push({ ...song, source: song.source || result.group.source })
-    }
-  } catch {
-    // Ignore: the caller falls back to the local library.
-  }
-  if (pool.length < 30) {
-    // Sheet endpoints can be rate limited; broad searches are far more stable
-    // and still represent what each platform pushes right now.
-    const themes = ['热歌', '新歌', '流行', '经典老歌', '华语', '轻音乐']
-    const jobs = themes.map((keyword) =>
-      api
-        .search({ q: keyword, type: 'music', limit: 40 })
-        .then((result) => result.items || [])
-        .catch(() => []),
-    )
-    for (const items of await Promise.all(jobs)) pool.push(...items)
-  }
+  const jobs = THEMES.map((keyword) =>
+    api
+      .search({ q: keyword, type: 'music', limit: 40 })
+      .then((result) => result.items || [])
+      .catch(() => []),
+  )
+  for (const items of await Promise.all(jobs)) pool.push(...items)
   return pool
 }
 
@@ -173,24 +154,48 @@ function takeFresh(pool, count, windowMs) {
   return mixedPick(fresh, count)
 }
 
+async function toplistPool() {
+  const pool = []
+  try {
+    await loadMeta()
+    const [data] = await Promise.all([api.toplists()])
+    const groups = (data.groups || []).filter((group) => group.data && group.data.length)
+    const order = (meta.sources || []).map((item) => item.id)
+    groups.sort((a, b) => order.indexOf(a.source) - order.indexOf(b.source))
+    for (const group of groups) {
+      for (const board of group.data.slice(0, 2)) {
+        try {
+          const detail = await api.toplistDetail({ source: group.source, id: board.id, title: board.title })
+          for (const song of detail.musicList || []) {
+            pool.push({ ...song, source: song.source || group.source })
+          }
+        } catch {
+          // Skip a board that fails; the rest still fill the list.
+        }
+      }
+      if (pool.length >= 160) break
+    }
+  } catch {
+    // Fall through to the search-based pool.
+  }
+  return pool
+}
+
 export async function buildDaily(force = false) {
   const cycle = cycleKey()
   if (!force && recs.daily.cycle === cycle && recs.daily.songs.length) return recs.daily.songs
   recs.loading.daily = true
   recs.error = ''
   try {
-    let pool = await recommendationPool(5)
-    let songs = takeFresh(pool, 50, DAILY_WINDOW)
+    let songs = takeFresh(await recommendationPool(), 50, DAILY_WINDOW)
     if (songs.length < 50) {
-      // Recommendations can come back thin when a platform is rate limited;
-      // top up with the listener's own taste instead of showing an empty list.
-      const fallback = await likedPool()
-      const merged = dedupeSongs([...songs, ...pool, ...fallback])
+      const merged = dedupeSongs([...songs, ...(await likedPool())])
       songs = takeFresh(merged, 50, DAILY_WINDOW)
     }
     if (!songs.length) {
       songs = dedupeSongs([...(library.favorites || []), ...(library.history || [])]).slice(0, 50)
     }
+    markSeen(songs)
     recs.daily = { cycle, songs, generatedAt: Date.now() }
   } catch (err) {
     recs.error = err.message || '每日推荐生成失败'
@@ -205,8 +210,10 @@ export async function buildLiked(force = false) {
   recs.loading.liked = true
   recs.error = ''
   try {
-    const pool = await likedPool()
-    const songs = takeFresh(pool, 50, DAILY_WINDOW)
+    let songs = takeFresh(await likedPool(), 20, DAILY_WINDOW)
+    if (songs.length < 20) {
+      songs = takeFresh(dedupeSongs([...songs, ...(await recommendationPool())]), 20, DAILY_WINDOW)
+    }
     recs.liked = { songs, generatedAt: Date.now() }
   } catch (err) {
     recs.error = err.message || '猜你喜欢生成失败'
@@ -216,16 +223,22 @@ export async function buildLiked(force = false) {
   return recs.liked.songs
 }
 
+export async function nextLikedBatch(count = 20) {
+  const fresh = takeFresh(dedupeSongs([...(await likedPool()), ...(await recommendationPool())]), count, DAILY_WINDOW)
+  markSeen(fresh)
+  recs.liked.songs.push(...fresh)
+  return fresh
+}
+
 export async function buildRandom(force = false) {
   const cycle = cycleKey()
-  if (!force && recs.random.songs.length && recs.random.cycle === cycle) return recs.random.songs
+  if (!force && recs.random.cycle === cycle && recs.random.songs.length) return recs.random.songs
   recs.loading.random = true
   recs.error = ''
   try {
-    const pool = await recommendationPool(4)
-    const songs = takeFresh(pool, 20, RANDOM_WINDOW)
-    recs.random = { cycle, songs, generatedAt: Date.now() }
+    const songs = takeFresh(await recommendationPool(), 20, RANDOM_WINDOW)
     markSeen(songs)
+    recs.random = { cycle, songs, generatedAt: Date.now() }
   } catch (err) {
     recs.error = err.message || '随便听听生成失败'
   } finally {
@@ -234,17 +247,31 @@ export async function buildRandom(force = false) {
   return recs.random.songs
 }
 
-/** Extra batch appended when the random queue is almost finished. */
 export async function nextRandomBatch(count = 20) {
-  const pool = await recommendationPool(4)
-  const fresh = takeFresh(pool, count, RANDOM_WINDOW)
+  const fresh = takeFresh(await recommendationPool(), count, RANDOM_WINDOW)
   markSeen(fresh)
   recs.random.songs.push(...fresh)
   return fresh
 }
 
-export function markDailySeen(songs) {
-  markSeen(songs)
+export async function buildHot(force = false) {
+  const cycle = cycleKey()
+  if (!force && recs.hot.cycle === cycle && recs.hot.songs.length) return recs.hot.songs
+  recs.loading.hot = true
+  recs.error = ''
+  try {
+    let songs = dedupeSongs(await toplistPool())
+    if (songs.length < 100) {
+      songs = dedupeSongs([...songs, ...(await recommendationPool())])
+    }
+    songs = songs.slice(0, 100)
+    recs.hot = { cycle, songs, generatedAt: Date.now() }
+  } catch (err) {
+    recs.error = err.message || '热门榜单生成失败'
+  } finally {
+    recs.loading.hot = false
+  }
+  return recs.hot.songs
 }
 
 export function hydrateRecs() {
@@ -253,6 +280,14 @@ export function hydrateRecs() {
   if (saved.daily && Array.isArray(saved.daily.songs)) recs.daily = { ...recs.daily, ...saved.daily }
   if (saved.liked && Array.isArray(saved.liked.songs)) recs.liked = { ...recs.liked, ...saved.liked }
   if (saved.random && Array.isArray(saved.random.songs)) recs.random = { ...recs.random, ...saved.random }
+  if (saved.hot && Array.isArray(saved.hot.songs)) recs.hot = { ...recs.hot, ...saved.hot }
+}
+
+/** Builds anything that is missing for the current 06:00 cycle. */
+export async function initRecs() {
+  hydrateRecs()
+  await Promise.all([buildDaily(), buildRandom(), buildHot()])
+  if (!recs.liked.songs.length) await buildLiked()
 }
 
 export function snapshotRecs() {
@@ -260,6 +295,7 @@ export function snapshotRecs() {
     daily: { cycle: recs.daily.cycle, songs: recs.daily.songs, generatedAt: recs.daily.generatedAt },
     liked: { songs: recs.liked.songs, generatedAt: recs.liked.generatedAt },
     random: { cycle: recs.random.cycle, songs: recs.random.songs, generatedAt: recs.random.generatedAt },
+    hot: { cycle: recs.hot.cycle, songs: recs.hot.songs, generatedAt: recs.hot.generatedAt },
     seen: seenMap(),
   }
 }

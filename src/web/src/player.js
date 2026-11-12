@@ -24,7 +24,7 @@ const state = reactive({
   lyricIndex: -1,
   showQueue: false,
   showNowPlaying: false,
-  randomMode: false,
+  extendMode: '',
   alternatives: [],
   alternativesLoading: false,
   switching: false,
@@ -386,13 +386,13 @@ async function precheckQueue(songs) {
 // that were not generated in the last seven days.
 let randomExtending = false
 async function maybeExtendRandom() {
-  if (!state.randomMode) return
+  if (!state.extendMode) return
   if (state.queue.length - state.index > 2) return
   if (randomExtending) return
   randomExtending = true
   try {
-    const { nextRandomBatch } = await import('./recs')
-    const more = await nextRandomBatch(20)
+    const { nextLikedBatch, nextRandomBatch } = await import('./recs')
+    const more = state.extendMode === 'liked' ? await nextLikedBatch(20) : await nextRandomBatch(20)
     for (const song of more) {
       if (!state.queue.some((item) => item.id === song.id)) state.queue.push(song)
     }
@@ -410,7 +410,7 @@ function playSongs(songs, start = 0) {
   hydrateLocalSongs(list).then((resolved) => {
     if (token !== playToken) return
     state.queue = resolved
-    state.randomMode = false
+    state.extendMode = ''
     playAt(Math.min(Math.max(0, start), resolved.length - 1))
     precheckQueue(resolved)
   })

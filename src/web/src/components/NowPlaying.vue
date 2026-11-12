@@ -67,6 +67,41 @@ function close() {
   state.showNowPlaying = false
 }
 
+// Swipe left anywhere (Android back gesture) or swipe down on the song info to
+// collapse the playing view.
+let touchStart = null
+
+function onTouchStart(event) {
+  const point = event.touches && event.touches[0]
+  if (!point) return
+  const target = event.target
+  const inLyrics = Boolean(target && target.closest && target.closest('.now-lyrics-scroll'))
+  touchStart = { x: point.clientX, y: point.clientY, inLyrics }
+}
+
+function onTouchMove(event) {
+  if (!touchStart) return
+  const point = event.touches && event.touches[0]
+  if (!point) return
+  const dx = point.clientX - touchStart.x
+  const dy = point.clientY - touchStart.y
+  if (!touchStart.inLyrics && dy > 90 && Math.abs(dx) < 80) {
+    touchStart = null
+    close()
+  }
+}
+
+function onTouchEnd(event) {
+  const start = touchStart
+  touchStart = null
+  const point = event.changedTouches && event.changedTouches[0]
+  if (!start || !point) return
+  const dx = point.clientX - start.x
+  if (dx < -80) {
+    close()
+  }
+}
+
 function toggleLike() {
   if (current.value) toggleFavorite(current.value)
 }
@@ -144,7 +179,13 @@ onBeforeUnmount(() => {
 
 <template>
   <transition name="now-fade">
-    <div v-if="state.showNowPlaying" class="now-playing">
+    <div
+      v-if="state.showNowPlaying"
+      class="now-playing"
+      @touchstart.passive="onTouchStart"
+      @touchmove.passive="onTouchMove"
+      @touchend="onTouchEnd"
+    >
       <div class="now-backdrop" :style="backdropStyle"></div>
       <div class="now-shade"></div>
 
