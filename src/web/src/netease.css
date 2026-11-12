@@ -3306,3 +3306,23 @@ a,
     bottom: 44px;
   }
 }
+
+/* Phones: start the generated lists right under the top bar. */
+@media (max-width: 900px) {
+  .home-view > .section:first-of-type {
+    margin-top: 0;
+  }
+
+  .home-view {
+    padding-top: 0;
+  }
+}
+
+/* Favourited state must stay red even while pressed on touch screens, where
+   the generic :hover rule above would otherwise reset the colour. */
+.player-bar .like-button.active,
+.player-bar .like-button.active i,
+.player-bar .like-button.active:hover,
+.player-bar .like-button.active:hover i {
+  color: var(--accent);
+}

@@ -187,16 +187,19 @@ export async function buildDaily(force = false) {
   recs.loading.daily = true
   recs.error = ''
   try {
-    let songs = takeFresh(await recommendationPool(), 50, DAILY_WINDOW)
+    let songs = takeFresh(await recommendationPool(), 150, DAILY_WINDOW)
     if (songs.length < 50) {
       const merged = dedupeSongs([...songs, ...(await likedPool())])
-      songs = takeFresh(merged, 50, DAILY_WINDOW)
+      songs = takeFresh(merged, 150, DAILY_WINDOW)
     }
     if (!songs.length) {
       songs = dedupeSongs([...(library.favorites || []), ...(library.history || [])]).slice(0, 50)
     }
     markSeen(songs)
+    songs = await verifyList(songs, 50)
+    markSeen(songs)
     recs.daily = { cycle, songs, generatedAt: Date.now() }
+    syncToLibrary()
   } catch (err) {
     recs.error = err.message || '每日推荐生成失败'
   } finally {
@@ -210,11 +213,13 @@ export async function buildLiked(force = false) {
   recs.loading.liked = true
   recs.error = ''
   try {
-    let songs = takeFresh(await likedPool(), 20, DAILY_WINDOW)
+    let songs = takeFresh(await likedPool(), 60, DAILY_WINDOW)
     if (songs.length < 20) {
-      songs = takeFresh(dedupeSongs([...songs, ...(await recommendationPool())]), 20, DAILY_WINDOW)
+      songs = takeFresh(dedupeSongs([...songs, ...(await recommendationPool())]), 60, DAILY_WINDOW)
     }
+    songs = await verifyList(songs, 20)
     recs.liked = { songs, generatedAt: Date.now() }
+    syncToLibrary()
   } catch (err) {
     recs.error = err.message || '猜你喜欢生成失败'
   } finally {
@@ -227,6 +232,7 @@ export async function nextLikedBatch(count = 20) {
   const fresh = takeFresh(dedupeSongs([...(await likedPool()), ...(await recommendationPool())]), count, DAILY_WINDOW)
   markSeen(fresh)
   recs.liked.songs.push(...fresh)
+  syncToLibrary()
   return fresh
 }
 
@@ -236,9 +242,12 @@ export async function buildRandom(force = false) {
   recs.loading.random = true
   recs.error = ''
   try {
-    const songs = takeFresh(await recommendationPool(), 20, RANDOM_WINDOW)
+    const songs = takeFresh(await recommendationPool(), 60, RANDOM_WINDOW)
     markSeen(songs)
-    recs.random = { cycle, songs, generatedAt: Date.now() }
+    const verified = await verifyList(songs, 20)
+    markSeen(verified)
+    recs.random = { cycle, songs: verified, generatedAt: Date.now() }
+    syncToLibrary()
   } catch (err) {
     recs.error = err.message || '随便听听生成失败'
   } finally {
@@ -251,6 +260,7 @@ export async function nextRandomBatch(count = 20) {
   const fresh = takeFresh(await recommendationPool(), count, RANDOM_WINDOW)
   markSeen(fresh)
   recs.random.songs.push(...fresh)
+  syncToLibrary()
   return fresh
 }
 
@@ -264,14 +274,71 @@ export async function buildHot(force = false) {
     if (songs.length < 100) {
       songs = dedupeSongs([...songs, ...(await recommendationPool())])
     }
-    songs = songs.slice(0, 100)
+    songs = songs.slice(0, 300)
+    songs = await verifyList(songs, 100)
     recs.hot = { cycle, songs, generatedAt: Date.now() }
+    syncToLibrary()
   } catch (err) {
     recs.error = err.message || '热门榜单生成失败'
   } finally {
     recs.loading.hot = false
   }
   return recs.hot.songs
+}
+
+async function songPlayable(song) {
+  try {
+    const params = {
+      source: song.source,
+      id: song.sourceId || song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      duration: song.duration,
+    }
+    if (song.extra && Object.keys(song.extra).length) params.extra = JSON.stringify(song.extra)
+    const data = await api.songUrl(params)
+    return Boolean(data && data.url)
+  } catch {
+    return false
+  }
+}
+
+async function bestAlternative(song) {
+  try {
+    const data = await api.alternatives({
+      title: song.title,
+      artist: song.artist,
+      duration: song.duration,
+      source: song.source,
+    })
+    for (const item of (data.items || []).slice(0, 3)) {
+      if (await songPlayable(item)) return item
+    }
+  } catch {
+    // No alternatives: the track is dropped.
+  }
+  return null
+}
+
+/** Keeps only playable tracks, swapped to another source when possible. */
+async function verifyList(candidates, target, concurrency = 5) {
+  const verified = []
+  let cursor = 0
+  async function worker() {
+    while (verified.length < target && cursor < candidates.length) {
+      const song = candidates[cursor]
+      cursor += 1
+      if (await songPlayable(song)) {
+        verified.push(song)
+        continue
+      }
+      const alternative = await bestAlternative(song)
+      if (alternative) verified.push(alternative)
+    }
+  }
+  await Promise.all(Array.from({ length: concurrency }, worker))
+  return verified.slice(0, target)
 }
 
 export function hydrateRecs() {
@@ -288,6 +355,12 @@ export async function initRecs() {
   hydrateRecs()
   await Promise.all([buildDaily(), buildRandom(), buildHot()])
   if (!recs.liked.songs.length) await buildLiked()
+}
+
+/** Mirrors the generated lists into the synced library so a refresh (or
+ * another device) shows them instantly instead of rebuilding. */
+function syncToLibrary() {
+  library.recs = snapshotRecs()
 }
 
 export function snapshotRecs() {

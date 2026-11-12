@@ -44,19 +44,34 @@ function openNowPlaying() {
   state.showNowPlaying = !state.showNowPlaying
 }
 
+// Whole-bar toggle: cover, song info and empty areas switch the playing view,
+// while transport buttons and sliders keep their own behaviour.
+function onBarClick(event) {
+  if (!current.value) return
+  const target = event.target
+  if (target && target.closest) {
+    if (target.closest('.player-cover')) {
+      state.showNowPlaying = !state.showNowPlaying
+      return
+    }
+    if (target.closest('button, input, a, .t-slider')) return
+  }
+  state.showNowPlaying = !state.showNowPlaying
+}
+
 function toggleLike() {
   if (current.value) toggleFavorite(current.value)
 }
 </script>
 
 <template>
-  <footer class="player-bar" :class="{ clickable: Boolean(current), 'now-open': state.showNowPlaying }">
+  <footer class="player-bar" :class="{ clickable: Boolean(current), 'now-open': state.showNowPlaying }" @click="onBarClick">
     <div class="player-track">
-      <button class="player-cover" :class="{ spinning: state.playing }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" @click.stop="openNowPlaying">
+      <button class="player-cover" :class="{ spinning: state.playing }" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" >
         <img v-if="current && current.artwork" :src="current.artwork" :alt="current.title" />
         <i v-else class="ri-music-2-line"></i>
       </button>
-      <div class="player-info" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" @click.stop="openNowPlaying">
+      <div class="player-info" :title="state.showNowPlaying ? '收起播放界面' : '打开播放界面'" >
         <div class="player-title" :title="current ? current.title : ''">
           {{ current ? current.title : '还没有播放音乐' }}
         </div>

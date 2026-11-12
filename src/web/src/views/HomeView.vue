@@ -6,7 +6,7 @@ import SectionHeader from '../components/SectionHeader.vue'
 import SheetGrid from '../components/SheetGrid.vue'
 import SongList from '../components/SongList.vue'
 import { player } from '../player'
-import { REC_META, initRecs, recs } from '../recs'
+import { REC_META, hydrateRecs, initRecs, recs } from '../recs'
 import { isLibraryHydrated, onLibraryLoaded } from '../library'
 import { library } from '../library'
 
@@ -165,6 +165,8 @@ function playKind(kind) {
 }
 
 onMounted(() => {
+  // Show whatever is already cached before the server round-trip finishes.
+  hydrateRecs()
   if (isLibraryHydrated()) {
     initRecs()
   } else {
