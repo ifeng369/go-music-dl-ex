@@ -44,6 +44,7 @@ public class MainActivity extends Activity {
 
     private SharedPreferences prefs;
     private WebView webView;
+    private LocalProxy proxy;
     private ValueCallback<Uri[]> fileCallback;
 
     private final PlaybackService.CommandSink commandSink = new PlaybackService.CommandSink() {
@@ -254,7 +255,20 @@ public class MainActivity extends Activity {
             webView.addJavascriptInterface(new NativeBridge(), "MusicDLNative");
             setContentView(webView);
         }
-        webView.loadUrl(url + "/");
+'        // Media is fetched straight from the CDN through a loopback proxy so
+        // covers and audio never travel through the tunnel.
+        if (proxy != null) {
+            proxy.stop();
+            proxy = null;
+        }
+        try {
+            proxy = new LocalProxy(url);
+            proxy.start();
+            webView.loadUrl(proxy.localUrl());
+        } catch (Exception err) {
+            proxy = null;
+            webView.loadUrl(url + "/");
+        }'
     }
 
     private void showMenu() {
@@ -345,6 +359,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (proxy != null) {
+            proxy.stop();
+            proxy = null;
+        }
         PlaybackService.setCommandSink(null);
         if (webView != null) {
             webView.destroy();
