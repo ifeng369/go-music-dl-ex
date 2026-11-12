@@ -260,11 +260,11 @@ export async function buildRandom(force = false) {
   recs.loading.random = true
   recs.error = ''
   try {
-    const candidates = takeFresh(await recommendationPool(), 40, RANDOM_WINDOW)
-    markSeen(songs)
-    const verified = topUp(await verifyList(candidates, 20), 20)
-    markSeen(verified)
-    recs.random = { cycle, songs: verified, generatedAt: Date.now() }
+    // No freshness window and no playability pre-check here: the list must be
+    // available instantly. Playback swaps a broken source on demand.
+    const pool = dedupeSongs(await recommendationPool())
+    const songs = mixedPick(pool, 20)
+    recs.random = { cycle, songs, generatedAt: Date.now() }
     syncToLibrary()
   } catch (err) {
     recs.error = err.message || '随便听听生成失败'
@@ -275,8 +275,8 @@ export async function buildRandom(force = false) {
 }
 
 export async function nextRandomBatch(count = 20) {
-  const fresh = takeFresh(await recommendationPool(), count, RANDOM_WINDOW)
-  markSeen(fresh)
+  const pool = dedupeSongs(await recommendationPool())
+  const fresh = mixedPick(pool, count)
   recs.random.songs.push(...fresh)
   syncToLibrary()
   return fresh

@@ -2,7 +2,8 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { player } from '../player'
-import { REC_META, recs, buildDaily, buildLiked, buildRandom, buildHot } from '../recs'
+import { REC_META, hydrateRecs, recs, buildDaily, buildLiked, buildRandom, buildHot } from '../recs'
+import { isLibraryHydrated, onLibraryLoaded } from '../library'
 import SongList from '../components/SongList.vue'
 
 const route = useRoute()
@@ -22,8 +23,17 @@ const builders = {
 }
 
 onMounted(async () => {
+  // Show the cached list first; only generate when nothing is stored yet.
+  hydrateRecs()
+  if (!isLibraryHydrated()) {
+    await new Promise((resolve) => {
+      onLibraryLoaded(resolve)
+      window.setTimeout(resolve, 4000)
+    })
+    hydrateRecs()
+  }
   const build = builders[kind.value]
-  if (build) await build()
+  if (build) build()
 })
 
 function playAll() {

@@ -406,7 +406,7 @@ async function precheckQueue(songs) {
 let randomExtending = false
 async function maybeExtendRandom() {
   if (!state.extendMode) return
-  if (state.queue.length - state.index > 2) return
+  if (state.queue.length - state.index > 3) return
   if (randomExtending) return
   randomExtending = true
   try {
@@ -752,7 +752,10 @@ function syncNativeState(force = false) {
 
 audio.addEventListener('play', () => syncNativeState(true))
 audio.addEventListener('pause', () => syncNativeState(true))
-audio.addEventListener('timeupdate', () => syncNativeState(false))
+audio.addEventListener('timeupdate', () => {
+  syncNativeState(false)
+  if (state.extendMode) maybeExtendRandom()
+})
 
 if (typeof window !== 'undefined') {
   // Android system back / edge swipe: close overlays before leaving the page.
