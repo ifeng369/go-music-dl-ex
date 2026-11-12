@@ -255,7 +255,7 @@ public class MainActivity extends Activity {
             webView.addJavascriptInterface(new NativeBridge(), "MusicDLNative");
             setContentView(webView);
         }
-'        // Media is fetched straight from the CDN through a loopback proxy so
+        // Media is fetched straight from the CDN through a loopback proxy so
         // covers and audio never travel through the tunnel.
         if (proxy != null) {
             proxy.stop();
@@ -268,7 +268,7 @@ public class MainActivity extends Activity {
         } catch (Exception err) {
             proxy = null;
             webView.loadUrl(url + "/");
-        }'
+        }
     }
 
     private void showMenu() {
