@@ -27,6 +27,23 @@
       "is_docker": false,
       "service_port": "18080",
       "releases": {
+        "1.0.39": {
+          "changelog": "MusicDL Ex 1.0.39",
+          "updated_at": "2026-11-12T01:30:41.384Z",
+          "os_min_version": "1.1.8",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/ifeng369/go-music-dl-ex/releases/download/v1.0.39/musicdl-ex-1.0.39-fnos-amd64.fpk",
+              "sha256": "e163025195dfc431b32efb9b751ee5f29e7d3a2d4d71ac01604d1341cf93c644",
+              "size": 9657722
+            },
+            "arm": {
+              "download_url": "https://github.com/ifeng369/go-music-dl-ex/releases/download/v1.0.39/musicdl-ex-1.0.39-fnos-arm64.fpk",
+              "sha256": "a0169d71a5e3c8d30b4138408ecc8b5a6aa75587991dd59f34ce915a5515c054",
+              "size": 9090977
+            }
+          }
+        },
         "1.0.38": {
           "changelog": "MusicDL Ex 1.0.38",
           "updated_at": "2026-11-11T15:37:45.481Z",
