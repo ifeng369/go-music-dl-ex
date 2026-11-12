@@ -3400,3 +3400,13 @@ a,
 .player-track.in-right {
   transform: translateX(60%);
 }
+
+/* The pill look came from backdrop-filter, which keeps blurring the cover even
+   with a transparent background. Remove it so only the text remains. */
+.count-badge,
+.playlist-count {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
