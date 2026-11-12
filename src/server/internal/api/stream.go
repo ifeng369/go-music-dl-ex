@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -434,7 +435,7 @@ func (s *Server) proxySoda(w http.ResponseWriter, r *http.Request, id string, ex
 	}
 	w.Header().Set("Content-Type", core.AudioMimeByExt(ext))
 	w.Header().Set("Accept-Ranges", "bytes")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Cache-Control", "private, max-age=86400")
 	http.ServeContent(w, r, safeFilename(meta.Title, id)+"."+ext, time.Now(), bytes.NewReader(data))
 }
 
@@ -454,18 +455,26 @@ func (s *Server) handleCover(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, msg)
 		return
 	}
-	if contentType == "" {
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+	if contentType == "" || contentType == "image/jpg" {
 		contentType = "image/jpeg"
+	}
+	etag := `"` + fmt.Sprintf("%x", sha256.Sum256([]byte(raw)))[:20] + `"`
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	if match := strings.TrimSpace(r.Header.Get("If-None-Match")); match != "" && match == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Length", int64String(int64(len(data))))
-	w.Header().Set("Cache-Control", "public, max-age=21600")
 	_, _ = w.Write(data)
 }
 
 func setStreamHeaders(w http.ResponseWriter, ext string) {
 	w.Header().Set("Content-Type", core.AudioMimeByExt(ext))
-	w.Header().Set("Cache-Control", "no-store")
+	// Browser-only cache: never let a shared cache (CDN) reuse one user's audio.
+	w.Header().Set("Cache-Control", "private, max-age=86400")
 }
 
 func copyStreamHeaders(dst, src http.Header) {
