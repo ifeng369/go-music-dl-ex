@@ -130,7 +130,7 @@ jobs:
             exit 0
           fi
           echo "previous tag: ${prev}"
-          if ! git diff --quiet "${prev}" "${GITHUB_SHA}" -- android; then
+          if ! git diff --quiet "${prev}" "${GITHUB_SHA}" -- android src/server/mobile src/server/internal/api; then
             echo "android/ changed since ${prev}"
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -165,6 +165,31 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
+
+      - name: Set up Android SDK
+        if: steps.android.outputs.changed == 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: Install gomobile
+        if: steps.android.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          gomobile init
+
+      - name: Build embedded core
+        if: steps.android.outputs.changed == 'true'
+        shell: bash
+        working-directory: src/server
+        run: |
+          set -euo pipefail
+          mkdir -p ../../android/app/libs
+          gomobile bind -target=android/arm64,android/arm -androidapi 21 \
+            -o ../../android/app/libs/mobile.aar ./mobile
+          ls -lh ../../android/app/libs
 
       - name: Build Android shell APK
         if: steps.android.outputs.changed == 'true'

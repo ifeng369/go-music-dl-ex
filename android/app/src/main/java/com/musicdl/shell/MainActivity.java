@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -32,6 +33,8 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import mobile.Mobile;
 
 /**
  * Thin WebView shell for the MusicDL Ex web UI. The server address is asked once
@@ -83,11 +86,20 @@ public class MainActivity extends Activity {
         PlaybackService.setCommandSink(commandSink);
         requestNotificationPermission();
         prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        String saved = prefs.getString(KEY_URL, "");
-        if (saved == null || saved.trim().isEmpty()) {
-            showSetup("");
-        } else {
-            showWeb(saved);
+        startEmbedded();
+    }
+
+    /**
+     * The standalone build runs the whole server inside the app, so there is no
+     * server address to ask for. A failure falls back to the manual setup page.
+     */
+    private void startEmbedded() {
+        try {
+            String url = Mobile.start(getFilesDir().getAbsolutePath());
+            showWeb(url);
+        } catch (Throwable err) {
+            Log.e("MusicDL", "embedded server failed", err);
+            showSetup(prefs.getString(KEY_URL, ""));
         }
     }
 
@@ -279,20 +291,9 @@ public class MainActivity extends Activity {
             webView.addJavascriptInterface(new NativeBridge(), "MusicDLNative");
             setContentView(webView);
         }
-        // Media is fetched straight from the CDN through a loopback proxy so
-        // covers and audio never travel through the tunnel.
-        if (proxy != null) {
-            proxy.stop();
-            proxy = null;
-        }
-        try {
-            proxy = new LocalProxy(url);
-            proxy.start();
-            webView.loadUrl(proxy.localUrl());
-        } catch (Exception err) {
-            proxy = null;
-            webView.loadUrl(url + "/");
-        }
+        // The embedded server already runs on this device, so no extra proxy hop
+        // is needed.
+        webView.loadUrl(url);
     }
 
     private void showMenu() {
