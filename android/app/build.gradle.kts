@@ -37,6 +37,24 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
+    flavorDimensions += "mode"
+    productFlavors {
+        // Lightweight shell that talks to a server the user enters.
+        create("remote") {
+            dimension = "mode"
+        }
+        // Pocket server: the Go core is embedded, no external dependency.
+        create("standalone") {
+            dimension = "mode"
+            applicationIdSuffix = ".standalone"
+            versionNameSuffix = "-standalone"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -61,6 +79,10 @@ android {
 }
 
 dependencies {
-    // Produced by `gomobile bind` from src/server/mobile.
-    implementation(files("libs/mobile.aar"))
+    // Produced by `gomobile bind` from src/server/mobile. Only the standalone
+    // flavour embeds it, so the remote build stays tiny.
+    val mobileAar = file("libs/mobile.aar")
+    if (mobileAar.exists()) {
+        add("standaloneImplementation", files(mobileAar))
+    }
 }

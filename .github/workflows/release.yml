@@ -197,8 +197,10 @@ jobs:
           set -euo pipefail
           gradle --no-daemon --console=plain assembleRelease
           mkdir -p "${GITHUB_WORKSPACE}/dist/android"
-          cp app/build/outputs/apk/release/app-release.apk \
+          cp app/build/outputs/apk/remote/release/app-remote-release.apk \
             "${GITHUB_WORKSPACE}/dist/android/musicdl-ex-${{ steps.version.outputs.value }}-android.apk"
+          cp app/build/outputs/apk/standalone/release/app-standalone-release.apk \
+            "${GITHUB_WORKSPACE}/dist/android/musicdl-ex-${{ steps.version.outputs.value }}-android-standalone.apk"
           ls -lh "${GITHUB_WORKSPACE}/dist/android"
 
       - name: Reuse previous Android APK
@@ -210,9 +212,18 @@ jobs:
           set -euo pipefail
           prev="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^")"
           mkdir -p dist/android
-          gh release download "${prev}" --pattern '*-android.apk' --dir dist/android --clobber
-          src="$(ls dist/android/*-android.apk | head -n1)"
-          mv "${src}" "dist/android/musicdl-ex-${{ steps.version.outputs.value }}-android.apk"
+          gh release download "${prev}" --pattern '*.apk' --dir dist/android --clobber
+          mkdir -p dist/android/reuse
+          for f in dist/android/*.apk; do
+            base="$(basename "$f")"
+            case "$base" in
+              *-standalone.apk) suffix="-android-standalone.apk" ;;
+              *) suffix="-android.apk" ;;
+            esac
+            mv "$f" "dist/android/reuse/musicdl-ex-${{ steps.version.outputs.value }}${suffix}"
+          done
+          mv dist/android/reuse/*.apk dist/android/
+          rmdir dist/android/reuse
           ls -lh dist/android
 
       - name: Publish GitHub Release

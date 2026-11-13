@@ -34,7 +34,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import mobile.Mobile;
 
 /**
  * Thin WebView shell for the MusicDL Ex web UI. The server address is asked once
@@ -86,7 +85,16 @@ public class MainActivity extends Activity {
         PlaybackService.setCommandSink(commandSink);
         requestNotificationPermission();
         prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        startEmbedded();
+        if ("standalone".equals(BuildConfig.FLAVOR)) {
+            startEmbedded();
+        } else {
+            String saved = prefs.getString(KEY_URL, "");
+            if (saved == null || saved.trim().isEmpty()) {
+                showSetup("");
+            } else {
+                showWeb(saved);
+            }
+        }
     }
 
     /**
@@ -95,7 +103,10 @@ public class MainActivity extends Activity {
      */
     private void startEmbedded() {
         try {
-            String url = Mobile.start(getFilesDir().getAbsolutePath());
+            Class<?> embedded = Class.forName("mobile.Mobile");
+            String url = (String) embedded
+                    .getMethod("start", String.class)
+                    .invoke(null, getFilesDir().getAbsolutePath());
             showWeb(url);
         } catch (Throwable err) {
             Log.e("MusicDL", "embedded server failed", err);
