@@ -166,9 +166,7 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: Set up Android SDK
         if: steps.android.outputs.changed == 'true'
-        uses: android-actions/setup-android@v3
 
       - name: Install gomobile
         if: steps.android.outputs.changed == 'true'

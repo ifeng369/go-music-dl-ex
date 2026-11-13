@@ -85,8 +85,17 @@ func Version() string
 4. **后台稳定性**：前台服务 + 本地 HTTP 服务需保活，避免被系统回收导致播放中断
 5. **兼容性**：minSdk 21 下 gomobile 产物的 ABI 覆盖要确认
 
-## 六、分支策略
+## 六、代码组织
 
-- 分支：`feat/android-standalone`
-- main 上的网页版与 FPK 流程完全不动
-- 独立客户端单独打 tag（如 `v1.1.0-standalone`），与现有 release 并行
+独立客户端与网页版共用同一套代码，全部放在 `main` 的常规目录里，不再使用分支：
+
+```
+├─ src/server/            现有服务端（网页版与独立版共用）
+│   ├─ mobile/            内嵌入口（gomobile 目标）
+│   └─ cmd/standalone/    桌面端验证程序
+├─ android/               Android 壳（独立版）
+└─ .github/workflows/     同时构建两种产物
+```
+
+- 单用户模式是 `api.Options.SingleUser`，对网页版无副作用
+- 独立版与网页版同版本号发布，产物分别是 `*-android.apk` 与 `*-fnos-*.fpk`
