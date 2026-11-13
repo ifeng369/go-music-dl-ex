@@ -18,6 +18,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
@@ -205,6 +206,15 @@ public class MainActivity extends Activity {
                     Uri uri = request.getUrl();
                     String scheme = uri.getScheme() == null ? "" : uri.getScheme();
                     if (scheme.startsWith("http")) {
+                        String path = uri.getPath() == null ? "" : uri.getPath().toLowerCase();
+                        if (path.endsWith(".apk")) {
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                            } catch (Exception ignored) {
+                                // Fall through to loading in the WebView.
+                            }
+                            return true;
+                        }
                         return false;
                     }
                     try {
@@ -249,6 +259,20 @@ public class MainActivity extends Activity {
                 public boolean onLongClick(View v) {
                     showMenu();
                     return true;
+                }
+            });
+
+            // Release assets (the APK) are served as attachments; WebView cannot
+            // save them, so hand every download to the system browser.
+            webView.setDownloadListener(new DownloadListener() {
+                @Override
+                public void onDownloadStart(String url, String userAgent, String contentDisposition,
+                                            String mimeType, long contentLength) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    } catch (Exception err) {
+                        Toast.makeText(MainActivity.this, "无法打开下载链接", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
