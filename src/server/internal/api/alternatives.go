@@ -17,19 +17,33 @@ import (
 const minAlternativeScore = 0.62
 
 type alternativeCandidate struct {
-	Item  MusicItem
-	Score float64
+	Item        MusicItem
+	Score       float64
+	ExactArtist bool
 }
 
-// alternativeArtistMatches rejects candidates whose artist is clearly a
-// different act. A missing or unknown artist does not block the match.
-func alternativeArtistMatches(wanted, candidate string) bool {
+// unknownArtist reports whether an artist field carries no usable identity.
+func unknownArtist(raw string) bool {
+	normalized := core.NormalizeText(raw)
+	return normalized == "" || normalized == "未知歌手" || normalized == "unknown" || normalized == "unknownartist"
+}
+
+// sameArtistName treats collaborations and platform-specific name variants as
+// the same act ("周杰伦" vs "周杰伦、费玉清", "G.E.M.邓紫棋" vs "邓紫棋"), but a
+// cover by a different singer never matches.
+func sameArtistName(wanted, candidate string) bool {
 	a := core.NormalizeText(wanted)
 	b := core.NormalizeText(candidate)
-	if a == "" || b == "" || a == "未知歌手" || a == "unknown" || a == "unknownartist" {
+	if a == "" || b == "" {
+		return false
+	}
+	if a == b {
 		return true
 	}
-	return core.SimilarityScore(a, b) >= 0.4
+	if len([]rune(b)) >= 2 && strings.Contains(b, a) {
+		return true
+	}
+	return len([]rune(a)) >= 2 && strings.Contains(a, b)
 }
 
 // handleAlternatives searches every other music source for the same song so the
@@ -93,6 +107,7 @@ func (s *Server) handleAlternatives(w http.ResponseWriter, r *http.Request) {
 		return items, nil
 	})
 
+	artistKnown := !unknownArtist(artist)
 	candidates := make([]alternativeCandidate, 0, len(filtered))
 	for _, source := range filtered {
 		bestScore := -1.0
@@ -102,10 +117,9 @@ func (s *Server) handleAlternatives(w http.ResponseWriter, r *http.Request) {
 			if strings.TrimSpace(song.Name) == "" {
 				continue
 			}
-			// A matching title is not enough: covers and mislabelled uploads
-			// share titles with completely different artists. Keep the original
-			// singer unless the platform simply has no artist information.
-			if !alternativeArtistMatches(artist, song.Artist) {
+			// Prefer the same singer: never fall back to a cover or another
+			// artist that happens to use the same title.
+			if artistKnown && !sameArtistName(artist, song.Artist) {
 				continue
 			}
 			score := core.CalcSongSimilarity(title, artist, song.Name, song.Artist)
@@ -130,12 +144,21 @@ func (s *Server) handleAlternatives(w http.ResponseWriter, r *http.Request) {
 			item.Source = source
 			item.ID = itemID(source, best.ID)
 		}
-		candidates = append(candidates, alternativeCandidate{Item: item, Score: bestScore})
+		exactArtist := core.NormalizeText(artist) == core.NormalizeText(best.Artist)
+		candidates = append(candidates, alternativeCandidate{
+			Item:        item,
+			Score:       bestScore,
+			ExactArtist: exactArtist,
+		})
 	}
 
-	// Higher similarity first. sort.SliceStable keeps the configured source
-	// order for equally good matches.
+	// Same singer first (prefer the exact name over collaborations), then the
+	// closest title match. sort.SliceStable keeps the configured source order
+	// for equally good matches.
 	sort.SliceStable(candidates, func(i, j int) bool {
+		if candidates[i].ExactArtist != candidates[j].ExactArtist {
+			return candidates[i].ExactArtist
+		}
 		return candidates[i].Score > candidates[j].Score
 	})
 	items := make([]MusicItem, 0, len(candidates))
