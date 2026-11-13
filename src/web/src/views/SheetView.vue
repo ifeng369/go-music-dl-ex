@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, formatCount } from '../api'
 import { auth } from '../auth'
 import { loadMeta, sourceName } from '../meta'
-import { player } from '../player'
+import { player, rememberSourceOverride } from '../player'
 import { isSheetFavorite, toggleSheetFavorite } from '../library'
 import SongList from '../components/SongList.vue'
 
@@ -63,6 +63,42 @@ function toggleFavoriteSheet() {
   toggleSheetFavorite(favoriteItem.value)
 }
 
+// Try the original source first; when it cannot be downloaded, fall back to
+// the same song on every other platform, and only then give up.
+async function downloadSongWithFallback(song) {
+  try {
+    await api.download({ song, withCover: false, withLyrics: true })
+    return { ok: true, switched: false }
+  } catch {
+    if (!song || song.source === 'local' || !song.title) return { ok: false }
+  }
+  let candidates = []
+  try {
+    const data = await api.alternatives({
+      title: song.title,
+      artist: song.artist,
+      duration: song.duration,
+      source: song.source,
+    })
+    candidates = (data.items || []).filter(
+      (item) => item && item.source && item.source !== 'local' && item.source !== song.source,
+    )
+  } catch {
+    return { ok: false }
+  }
+  for (const candidate of candidates) {
+    try {
+      await api.download({ song: candidate, withCover: false, withLyrics: true })
+      // Remember the working platform so playback uses it next time too.
+      rememberSourceOverride(song, candidate)
+      return { ok: true, switched: true }
+    } catch {
+      // This platform failed as well; try the next candidate.
+    }
+  }
+  return { ok: false }
+}
+
 async function downloadAll() {
   if (!songs.value.length || downloading.value) return
   if (!auth.state.user) {
@@ -76,15 +112,19 @@ async function downloadAll() {
   downloadTotal.value = total
   downloadDone.value = 0
   let failed = 0
+  let switched = 0
   const queue = songs.value.slice()
 
   async function worker() {
     while (queue.length) {
       const song = queue.shift()
       try {
-        await api.download({ song, withCover: false, withLyrics: true })
-      } catch {
-        failed += 1
+        const result = await downloadSongWithFallback(song)
+        if (!result.ok) {
+          failed += 1
+        } else if (result.switched) {
+          switched += 1
+        }
       } finally {
         downloadDone.value += 1
       }
@@ -96,7 +136,10 @@ async function downloadAll() {
   } finally {
     downloading.value = false
   }
-  window.alert(`下载完成：成功 ${total - failed} 首${failed ? `，失败 ${failed} 首` : ''}`)
+  const notes = [`成功 ${total - failed} 首`]
+  if (switched) notes.push(`其中换源 ${switched} 首`)
+  if (failed) notes.push(`跳过 ${failed} 首`)
+  window.alert(`下载完成：${notes.join('，')}`)
 }
 
 async function load() {
