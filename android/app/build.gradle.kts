@@ -59,3 +59,8 @@ android {
         abortOnError = false
     }
 }
+
+dependencies {
+    // Produced by `gomobile bind` from src/server/mobile.
+    implementation(files("libs/mobile.aar"))
+}
