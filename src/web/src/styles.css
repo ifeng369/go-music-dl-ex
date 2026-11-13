@@ -1081,6 +1081,19 @@ img {
   font-variant-numeric: tabular-nums;
 }
 
+.song-file-meta {
+  flex: 0 0 64px;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.song-file-meta.song-size {
+  flex-basis: 72px;
+}
+
 .row-add {
   width: 26px;
   height: 26px;

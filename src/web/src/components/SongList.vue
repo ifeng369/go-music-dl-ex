@@ -10,6 +10,7 @@ defineProps({
   songs: { type: Array, default: () => [] },
   showAlbum: { type: Boolean, default: false },
   showSource: { type: Boolean, default: true },
+  showFileMeta: { type: Boolean, default: false },
   showFavorite: { type: Boolean, default: true },
   showPlaylist: { type: Boolean, default: true },
   showRemove: { type: Boolean, default: false },
@@ -120,12 +121,14 @@ function createAndAdd() {
         <span class="song-text">
           <span class="song-title" :title="song.title">{{ song.title }}</span>
           <span class="song-artist" :title="song.artist">{{ song.artist || '未知歌手' }}</span>
-          <span v-if="song.source === 'local'" class="song-local-meta">{{ formatBitrate(song.bitrate) }} · {{ formatSize(song.size) }} · {{ formatDuration(song.duration) }}</span>
+          <span v-if="song.source === 'local' && !showFileMeta" class="song-local-meta">{{ formatBitrate(song.bitrate) }} · {{ formatSize(song.size) }} · {{ formatDuration(song.duration) }}</span>
         </span>
       </span>
       <span v-if="showAlbum" class="song-album" :title="song.album">{{ song.album || '—' }}</span>
       <span v-if="showSource" class="song-source">{{ sourceName(song.source) }}</span>
       <span v-if="song.isVip" class="vip-badge">VIP</span>
+      <span v-if="showFileMeta" class="song-file-meta song-bitrate">{{ formatBitrate(song.bitrate) }}</span>
+      <span v-if="showFileMeta" class="song-file-meta song-size">{{ formatSize(song.size) }}</span>
       <span class="song-duration">{{ formatDuration(song.duration) }}</span>
       <div class="row-actions">
         <button

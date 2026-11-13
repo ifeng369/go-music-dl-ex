@@ -940,6 +940,7 @@ kbd {
 
 .song-album,
 .song-source,
+.song-file-meta,
 .song-duration {
   font-size: 12px;
   color: var(--muted-2);
@@ -2432,6 +2433,15 @@ kbd {
 
   .section {
     margin-top: 28px;
+  }
+
+  .song-file-meta {
+    flex-basis: 50px;
+    font-size: 10px;
+  }
+
+  .song-file-meta.song-size {
+    flex-basis: 58px;
   }
 }
 
