@@ -166,8 +166,6 @@ jobs:
         with:
           gradle-version: "8.7"
 
-        if: steps.android.outputs.changed == 'true'
-
       - name: Install gomobile
         if: steps.android.outputs.changed == 'true'
         shell: bash
