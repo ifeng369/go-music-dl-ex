@@ -41,11 +41,29 @@ const savingDir = ref(false)
 const native = typeof window !== 'undefined' ? window.MusicDLNative : null
 const isStandalone = Boolean(native && native.isStandalone && native.isStandalone())
 const syncing = ref(false)
+const savedAccount = (() => {
+  try {
+    return native && native.getSyncAccount ? JSON.parse(native.getSyncAccount()) : {}
+  } catch {
+    return {}
+  }
+})()
+const hasSavedAccount = ref(Boolean(savedAccount && savedAccount.saved))
 const syncForm = reactive({
-  server: localStorage.getItem('musicdl.sync.server') || '',
-  username: localStorage.getItem('musicdl.sync.user') || 'admin',
+  server: (savedAccount && savedAccount.server) || localStorage.getItem('musicdl.sync.server') || '',
+  username: (savedAccount && savedAccount.username) || localStorage.getItem('musicdl.sync.user') || 'admin',
   password: '',
 })
+
+function forgetSyncAccount() {
+  if (!native || !native.clearSyncAccount) return
+  native.clearSyncAccount()
+  hasSavedAccount.value = false
+  syncForm.password = ''
+  localStorage.removeItem('musicdl.sync.server')
+  localStorage.removeItem('musicdl.sync.user')
+  notify('已清除保存的同步账号')
+}
 
 async function runSync() {
   if (!isStandalone || !native || !native.syncNow) return
@@ -73,6 +91,7 @@ async function runSync() {
     localStorage.setItem('musicdl.sync.server', server)
     localStorage.setItem('musicdl.sync.user', syncForm.username.trim())
     syncForm.password = ''
+    hasSavedAccount.value = true
     // Reload immediately: the in-memory library is stale and a pending save
     // would otherwise write it back over the merged result.
     sessionStorage.setItem(
@@ -366,13 +385,23 @@ onMounted(async () => {
       </div>
       <div class="import-row">
         <input v-model="syncForm.username" type="text" placeholder="账号" autocomplete="username" />
-        <input v-model="syncForm.password" type="password" placeholder="密码" autocomplete="current-password" />
+        <input
+          v-model="syncForm.password"
+          type="password"
+          :placeholder="hasSavedAccount ? '密码（已保存，留空即可）' : '密码'"
+          autocomplete="current-password"
+        />
         <button class="primary-button" :disabled="syncing" @click="runSync">
           <i :class="syncing ? 'ri-loader-4-line spin' : 'ri-arrow-left-right-line'"></i>
           {{ syncing ? '同步中…' : '立即同步' }}
         </button>
       </div>
-      <p class="hint">账号密码只用于本次连接，不会保存到设备；本地改动会一并推送到服务器。</p>
+      <p class="hint">
+        首次同步成功后账号保存在本机应用私有目录，下次启动会自动双向同步；本地改动同样会推送到服务器。
+      </p>
+      <button v-if="hasSavedAccount" class="text-button danger" @click="forgetSyncAccount">
+        清除保存的同步账号
+      </button>
     </section>
 
     <section class="settings-card">

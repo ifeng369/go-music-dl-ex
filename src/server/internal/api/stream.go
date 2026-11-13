@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -439,6 +440,43 @@ func (s *Server) proxySoda(w http.ResponseWriter, r *http.Request, id string, ex
 	http.ServeContent(w, r, safeFilename(meta.Title, id)+"."+ext, time.Now(), bytes.NewReader(data))
 }
 
+var (
+	coverAppleSize = regexp.MustCompile(`\d+x\d+bb`)
+	coverSodaSize  = regexp.MustCompile(`resize:\d+:\d+`)
+)
+
+// thumbnailCoverURL asks the image CDN for a card-sized copy. Cards are only a
+// few hundred pixels wide, yet several providers serve 1400px+ originals (up to
+// 1.5 MB), which is what made the generated playlist covers slow to appear.
+func thumbnailCoverURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	host := strings.ToLower(parsed.Hostname())
+	switch {
+	case strings.HasSuffix(host, "music.126.net"):
+		return appendCoverQuery(parsed, "param=300y300")
+	case strings.HasSuffix(host, "mzstatic.com"):
+		parsed.Path = coverAppleSize.ReplaceAllString(parsed.Path, "300x300bb")
+		return parsed.String()
+	case strings.HasSuffix(host, "douyinpic.com"):
+		parsed.Path = coverSodaSize.ReplaceAllString(parsed.Path, "resize:300:300")
+		return parsed.String()
+	case strings.HasSuffix(host, "dmhmusic.com"):
+		return appendCoverQuery(parsed, "imageView2/1/w/300/h/300")
+	}
+	return raw
+}
+
+func appendCoverQuery(u *url.URL, query string) string {
+	if u.RawQuery == "" {
+		u.RawQuery = query
+		return u.String()
+	}
+	return u.String() + "&" + query
+}
+
 func (s *Server) handleCover(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimSpace(r.URL.Query().Get("url"))
 	if raw == "" {
@@ -446,7 +484,7 @@ func (s *Server) handleCover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	source := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("source")))
-	data, contentType, err := core.FetchBytesWithMime(raw, source)
+	data, contentType, err := core.FetchBytesWithMime(thumbnailCoverURL(raw), source)
 	if err != nil || len(data) == 0 {
 		msg := "failed to fetch cover"
 		if err != nil {

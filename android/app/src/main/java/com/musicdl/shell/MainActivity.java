@@ -55,6 +55,9 @@ public class MainActivity extends Activity {
 
     private static final String PREFS = "musicdl";
     private static final String KEY_URL = "base_url";
+    private static final String KEY_SYNC_SERVER = "sync_server";
+    private static final String KEY_SYNC_USER = "sync_user";
+    private static final String KEY_SYNC_PASS = "sync_pass";
     private static final int REQ_FILE = 1001;
 
     private SharedPreferences prefs;
@@ -101,63 +104,107 @@ public class MainActivity extends Activity {
          * Two-way sync with a full MusicDL server: push every local record,
          * merge on the server, then write the merged state back locally.
          * Generated lists are server-authoritative, so they are not uploaded.
+         * An empty password reuses the saved one, so later syncs need no input.
          */
         @JavascriptInterface
         public String syncNow(String serverUrl, String username, String password) {
+            String base = normalize(serverUrl);
+            String user = username == null ? "" : username.trim();
+            String pass = password == null ? "" : password;
+            if (pass.isEmpty()) {
+                pass = prefs.getString(KEY_SYNC_PASS, "");
+            }
+            String result = performSync(embeddedBase, base, user, pass);
             try {
-                if (embeddedBase == null || embeddedBase.isEmpty()) {
-                    return syncError("当前版本没有内嵌数据库");
+                if (new JSONObject(result).optBoolean("ok", false)) {
+                    prefs.edit()
+                            .putString(KEY_SYNC_SERVER, base)
+                            .putString(KEY_SYNC_USER, user)
+                            .putString(KEY_SYNC_PASS, pass)
+                            .apply();
                 }
-                String base = normalize(serverUrl);
-                if (base.isEmpty()) {
-                    return syncError("请填写服务器地址");
-                }
-                String loginBody = new JSONObject()
-                        .put("username", username == null ? "" : username)
-                        .put("password", password == null ? "" : password)
-                        .toString();
-                JSONObject login = new JSONObject(
-                        httpRequest("POST", base + "/api/auth/login", loginBody, null));
-                String token = login.optString("token", "");
-                if (token.isEmpty()) {
-                    return syncError("登录失败：服务器没有返回会话");
-                }
+            } catch (Exception ignored) {
+                // A malformed result keeps the previous account untouched.
+            }
+            return result;
+        }
 
-                String localRaw = httpRequest("GET", embeddedBase + "api/sync?since=0", null, null);
-                JSONArray localItems = new JSONObject(localRaw).optJSONArray("items");
-                JSONArray outgoing = new JSONArray();
-                if (localItems != null) {
-                    for (int i = 0; i < localItems.length(); i++) {
-                        JSONObject item = localItems.optJSONObject(i);
-                        if (item == null) {
-                            continue;
-                        }
-                        if ("recs".equals(item.optString("kind"))) {
-                            continue;
-                        }
-                        outgoing.put(item);
-                    }
-                }
-
-                String pushBody = new JSONObject().put("items", outgoing).toString();
-                JSONObject remote = new JSONObject(
-                        httpRequest("POST", base + "/api/sync", pushBody, token));
-                JSONArray remoteItems = remote.optJSONArray("items");
-                if (remoteItems == null) {
-                    remoteItems = new JSONArray();
-                }
-                String applyBody = new JSONObject().put("items", remoteItems).toString();
-                httpRequest("POST", embeddedBase + "api/sync", applyBody, null);
-
+        @JavascriptInterface
+        public String getSyncAccount() {
+            try {
                 return new JSONObject()
-                        .put("ok", true)
-                        .put("pushed", outgoing.length())
-                        .put("received", remoteItems.length())
+                        .put("server", prefs.getString(KEY_SYNC_SERVER, ""))
+                        .put("username", prefs.getString(KEY_SYNC_USER, ""))
+                        .put("saved", !prefs.getString(KEY_SYNC_PASS, "").isEmpty())
                         .toString();
             } catch (Exception err) {
-                Log.e("MusicDL", "sync failed", err);
-                return syncError(err.getMessage() == null ? err.toString() : err.getMessage());
+                return "{}";
             }
+        }
+
+        @JavascriptInterface
+        public void clearSyncAccount() {
+            prefs.edit()
+                    .remove(KEY_SYNC_SERVER)
+                    .remove(KEY_SYNC_USER)
+                    .remove(KEY_SYNC_PASS)
+                    .apply();
+        }
+    }
+
+    private String performSync(String localBase, String base, String username, String password) {
+        try {
+            if (localBase == null || localBase.isEmpty()) {
+                return syncError("当前版本没有内嵌数据库");
+            }
+            if (base == null || base.isEmpty()) {
+                return syncError("请填写服务器地址");
+            }
+            String loginBody = new JSONObject()
+                    .put("username", username == null ? "" : username)
+                    .put("password", password == null ? "" : password)
+                    .toString();
+            JSONObject login = new JSONObject(
+                    httpRequest("POST", base + "/api/auth/login", loginBody, null));
+            String token = login.optString("token", "");
+            if (token.isEmpty()) {
+                return syncError("登录失败：服务器没有返回会话");
+            }
+
+            String localRaw = httpRequest("GET", localBase + "api/sync?since=0", null, null);
+            JSONArray localItems = new JSONObject(localRaw).optJSONArray("items");
+            JSONArray outgoing = new JSONArray();
+            if (localItems != null) {
+                for (int i = 0; i < localItems.length(); i++) {
+                    JSONObject item = localItems.optJSONObject(i);
+                    if (item == null) {
+                        continue;
+                    }
+                    if ("recs".equals(item.optString("kind"))) {
+                        continue;
+                    }
+                    outgoing.put(item);
+                }
+            }
+
+            String pushBody = new JSONObject().put("items", outgoing).toString();
+            JSONObject remote = new JSONObject(
+                    httpRequest("POST", base + "/api/sync", pushBody, token));
+            JSONArray remoteItems = remote.optJSONArray("items");
+            if (remoteItems == null) {
+                remoteItems = new JSONArray();
+            }
+            String applyBody = new JSONObject().put("items", remoteItems).toString();
+            httpRequest("POST", localBase + "api/sync", applyBody, null);
+
+            return new JSONObject()
+                    .put("ok", true)
+                    .put("pushed", outgoing.length())
+                    .put("received", remoteItems.length())
+                    .toString();
+        } catch (Exception err) {
+            Log.e("MusicDL", "sync failed", err);
+            return syncError(err.getMessage() == null ? err.toString() : err.getMessage());
         }
     }
 
@@ -230,15 +277,78 @@ public class MainActivity extends Activity {
     private void startEmbedded() {
         try {
             Class<?> embedded = Class.forName("mobile.Mobile");
-            String url = (String) embedded
+            final String url = (String) embedded
                     .getMethod("start", String.class)
                     .invoke(null, getFilesDir().getAbsolutePath());
             embeddedBase = url;
-            showWeb(url);
+            final String server = prefs.getString(KEY_SYNC_SERVER, "");
+            final String user = prefs.getString(KEY_SYNC_USER, "");
+            final String pass = prefs.getString(KEY_SYNC_PASS, "");
+            if (!server.isEmpty() && !user.isEmpty() && !pass.isEmpty()) {
+                // Sync before the page loads so it never sees stale data.
+                showSyncing();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        final String result = performSync(url, normalize(server), user, pass);
+                        boolean success;
+                        try {
+                            success = new JSONObject(result).optBoolean("ok", false);
+                        } catch (Exception err) {
+                            success = false;
+                        }
+                        final boolean synced = success;
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (isFinishing()) {
+                                    return;
+                                }
+                                if (webView == null) {
+                                    showWeb(url);
+                                }
+                                if (!synced) {
+                                    Toast.makeText(MainActivity.this,
+                                            "自动同步失败，可在设置中手动重试",
+                                            Toast.LENGTH_LONG).show();
+                                }
+                            }
+                        });
+                    }
+                }).start();
+            } else {
+                showWeb(url);
+            }
         } catch (Throwable err) {
             Log.e("MusicDL", "embedded server failed", err);
             showSetup(prefs.getString(KEY_URL, ""));
         }
+    }
+
+    private void showSyncing() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER);
+        root.setBackgroundColor(Color.WHITE);
+
+        TextView title = new TextView(this);
+        title.setText("MusicDL");
+        title.setTextSize(26);
+        title.setTextColor(Color.parseColor("#EC4141"));
+        title.setGravity(Gravity.CENTER);
+        root.addView(title);
+
+        TextView desc = new TextView(this);
+        desc.setText("正在与服务器同步…");
+        desc.setTextSize(14);
+        desc.setTextColor(Color.parseColor("#77777F"));
+        desc.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(12);
+        root.addView(desc, lp);
+
+        setContentView(root);
     }
 
     private void requestNotificationPermission() {
