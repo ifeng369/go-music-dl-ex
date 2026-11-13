@@ -21,6 +21,17 @@ type alternativeCandidate struct {
 	Score float64
 }
 
+// alternativeArtistMatches rejects candidates whose artist is clearly a
+// different act. A missing or unknown artist does not block the match.
+func alternativeArtistMatches(wanted, candidate string) bool {
+	a := core.NormalizeText(wanted)
+	b := core.NormalizeText(candidate)
+	if a == "" || b == "" || a == "未知歌手" || a == "unknown" || a == "unknownartist" {
+		return true
+	}
+	return core.SimilarityScore(a, b) >= 0.4
+}
+
 // handleAlternatives searches every other music source for the same song so the
 // player can offer a manual source switcher and automatically fall back when a
 // stream is unavailable. One best candidate per source is returned.
@@ -89,6 +100,12 @@ func (s *Server) handleAlternatives(w http.ResponseWriter, r *http.Request) {
 		for i := range results[source] {
 			song := &results[source][i]
 			if strings.TrimSpace(song.Name) == "" {
+				continue
+			}
+			// A matching title is not enough: covers and mislabelled uploads
+			// share titles with completely different artists. Keep the original
+			// singer unless the platform simply has no artist information.
+			if !alternativeArtistMatches(artist, song.Artist) {
 				continue
 			}
 			score := core.CalcSongSimilarity(title, artist, song.Name, song.Artist)

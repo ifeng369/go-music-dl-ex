@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, formatCount } from '../api'
 import { auth } from '../auth'
 import { loadMeta, sourceName } from '../meta'
-import { player, rememberSourceOverride } from '../player'
+import { player, mergeSourceSong, rememberSourceOverride } from '../player'
 import { isSheetFavorite, toggleSheetFavorite } from '../library'
 import SongList from '../components/SongList.vue'
 
@@ -88,7 +88,9 @@ async function downloadSongWithFallback(song) {
   }
   for (const candidate of candidates) {
     try {
-      await api.download({ song: candidate, withCover: false, withLyrics: true })
+      // Download uses the alternative stream but the original metadata, so the
+      // file keeps the artist the listener knows.
+      await api.download({ song: mergeSourceSong(song, candidate), withCover: false, withLyrics: true })
       // Remember the working platform so playback uses it next time too.
       rememberSourceOverride(song, candidate)
       return { ok: true, switched: true }

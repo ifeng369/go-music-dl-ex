@@ -360,10 +360,11 @@ async function verifyList(candidates, target, concurrency = 8, budgetMs = 12000)
       }
       const alternative = await bestAlternative(song)
       if (alternative) {
-        // Remember the working source so playback never re-checks this track.
-        const { rememberSourceOverride } = await import('./player')
+        // Remember the working source so playback never re-checks this track,
+        // but keep the original title/artist/cover in the list.
+        const { mergeSourceSong, rememberSourceOverride } = await import('./player')
         rememberSourceOverride(song, alternative)
-        verified.push(alternative)
+        verified.push(mergeSourceSong(song, alternative))
       }
     }
   }

@@ -84,13 +84,31 @@ function persistSourceOverrides() {
   }
 }
 
+// A source switch only borrows the working stream from another platform. Title,
+// artist, album and cover stay those of the song the listener picked, otherwise
+// a cover or a mislabelled match would appear to change the artist.
+function mergeSourceSong(original, replacement) {
+  if (!original) return replacement
+  if (!replacement) return original
+  return {
+    ...original,
+    id: replacement.id || original.id,
+    source: replacement.source || original.source,
+    sourceId: replacement.sourceId || original.sourceId,
+    url: replacement.url || original.url,
+    ext: replacement.ext || original.ext,
+    bitrate: replacement.bitrate || original.bitrate,
+    size: replacement.size || original.size,
+  }
+}
+
 function applySourceOverride(song) {
   if (!song || !song.id) return song
   let current = song
   const seen = new Set()
   while (current && current.id && sourceOverrides[current.id] && !seen.has(current.id)) {
     seen.add(current.id)
-    current = { ...sourceOverrides[current.id] }
+    current = mergeSourceSong(current, sourceOverrides[current.id])
   }
   return current
 }
@@ -107,10 +125,19 @@ function forgetSourceOverride(original) {
 function rememberSourceOverride(original, replacement) {
   if (!original || !replacement || !original.id || !replacement.id) return
   if (original.id === replacement.id) return
-  sourceOverrides[original.id] = { ...replacement }
+  const entry = {
+    id: replacement.id,
+    source: replacement.source,
+    sourceId: replacement.sourceId,
+    url: replacement.url,
+    ext: replacement.ext,
+    bitrate: replacement.bitrate,
+    size: replacement.size,
+  }
+  sourceOverrides[original.id] = entry
   persistSourceOverrides()
   // Keep the mapping on the server too, so every device resolves it directly.
-  library.sourceOverrides = { ...library.sourceOverrides, [original.id]: { ...replacement } }
+  library.sourceOverrides = { ...library.sourceOverrides, [original.id]: entry }
 }
 let fallbackBusy = false
 
@@ -226,7 +253,8 @@ async function loadAlternatives(song = current.value) {
 
 function applySource(song) {
   if (!song || state.index < 0) return
-  state.queue.splice(state.index, 1, song)
+  const original = state.queue[state.index]
+  state.queue.splice(state.index, 1, mergeSourceSong(original, song))
   playAt(state.index, { keepFallback: true })
 }
 
@@ -408,7 +436,7 @@ async function precheckQueue(songs) {
       const index = state.queue.findIndex((item) => item.id === song.id)
       precheckCache.add(key)
       if (!replacement || index < 0 || index === state.index) continue
-      state.queue.splice(index, 1, replacement)
+      state.queue.splice(index, 1, mergeSourceSong(song, replacement))
       rememberSourceOverride(song, replacement)
       precheckCache.add(precheckKey(replacement))
     }
@@ -673,7 +701,7 @@ if ('mediaSession' in navigator) {
   navigator.mediaSession.setActionHandler('seekto', (details) => seek(details.seekTime))
 }
 
-export { rememberSourceOverride }
+export { mergeSourceSong, rememberSourceOverride }
 
 export const player = {
   state,
