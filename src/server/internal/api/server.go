@@ -16,6 +16,9 @@ type Options struct {
 	Core      string
 	Web       http.Handler
 	Store     *UserStore
+	// SingleUser turns the server into a personal instance: every request is
+	// authenticated as this account, so the android build needs no login.
+	SingleUser *AppUser
 }
 
 type Server struct {
@@ -34,7 +37,18 @@ func New(opts Options) *Server {
 }
 
 func (s *Server) Handler() http.Handler {
-	return s.recoverer(s.cors(s.logRequests(s.withUserCookies(s.mux))))
+	handler := s.withUserCookies(s.mux)
+	if s.opts.SingleUser != nil {
+		user := s.opts.SingleUser
+		next := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if s.currentUser(r) == nil {
+				r = withUser(r, user)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+	return s.recoverer(s.cors(s.logRequests(handler)))
 }
 
 func (s *Server) routes() {
