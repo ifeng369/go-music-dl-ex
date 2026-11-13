@@ -130,7 +130,9 @@ jobs:
             exit 0
           fi
           echo "previous tag: ${prev}"
-          if ! git diff --quiet "${prev}" "${GITHUB_SHA}" -- android src/server/mobile src/server/internal/api; then
+          if ! git diff --quiet "${prev}" "${GITHUB_SHA}" -- \
+            android src/server/mobile src/server/internal/api \
+            src/server/internal/webassets src/server/go.mod src/server/go.sum; then
             echo "android/ changed since ${prev}"
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0

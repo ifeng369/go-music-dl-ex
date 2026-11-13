@@ -29,6 +29,9 @@ func Version() string { return api.EmbeddedVersion() }
 
 // Start opens (or creates) the local database inside dataDir and serves the UI
 // on a loopback port. Calling it twice returns the existing URL.
+//
+// The UI assets are compiled in (internal/webassets), so any web-only change
+// must rebuild the Android archive as well.
 func Start(dataDir string) (string, error) {
 	mu.Lock()
 	defer mu.Unlock()
