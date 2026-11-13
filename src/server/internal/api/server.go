@@ -95,6 +95,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("DELETE /api/users/{id}", s.requireAdmin(s.handleDeleteUser))
 	s.mux.HandleFunc("GET /api/me/library", s.requireUser(s.handleGetLibrary))
 	s.mux.HandleFunc("PUT /api/me/library", s.requireUser(s.handleSaveLibrary))
+	s.mux.HandleFunc("GET /api/sync", s.requireUser(s.handleSyncPull))
+	s.mux.HandleFunc("POST /api/sync", s.requireUser(s.handleSyncPush))
 	s.mux.HandleFunc("GET /api/settings", s.requireAdmin(s.handleGetSettings))
 	s.mux.HandleFunc("PUT /api/settings", s.requireAdmin(s.handleSaveSettings))
 

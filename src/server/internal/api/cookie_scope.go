@@ -94,7 +94,10 @@ func needsCookieScope(path string) bool {
 		return false
 	case strings.HasPrefix(path, "/api/auth/"), strings.HasPrefix(path, "/api/me/"):
 		return false
-	case path == "/api/cookies", path == "/api/home", path == "/api/category/sheets",
+	// Sync only touches its own tables and writes cookies directly, so it must
+	// not hold the cookie gate: invalidating the cache afterwards would
+	// deadlock on the same read lock.
+	case path == "/api/cookies", path == "/api/sync", path == "/api/home", path == "/api/category/sheets",
 		path == "/api/settings", path == "/api/healthz", path == "/api/version",
 		path == "/api/sources", path == "/api/detect":
 		return false

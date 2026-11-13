@@ -93,7 +93,7 @@ func NewUserStore(path string) (*UserStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open user database: %w", err)
 	}
-	if err := db.AutoMigrate(&AppUser{}, &appSession{}, &appUserLibrary{}, &appSetting{}, &appDownloadRecord{}); err != nil {
+	if err := db.AutoMigrate(&AppUser{}, &appSession{}, &appUserLibrary{}, &appSetting{}, &appDownloadRecord{}, &appSyncVersion{}); err != nil {
 		return nil, fmt.Errorf("migrate user database: %w", err)
 	}
 	store := &UserStore{db: db}
@@ -302,11 +302,6 @@ func (s *UserStore) GetLibrary(userID uint) (string, error) {
 		return "", err
 	}
 	return item.Data, nil
-}
-
-func (s *UserStore) SaveLibrary(userID uint, data string) error {
-	item := appUserLibrary{UserID: userID, Data: data, UpdatedAt: time.Now()}
-	return s.db.Save(&item).Error
 }
 
 func (s *UserStore) GetSetting(key, fallback string) string {

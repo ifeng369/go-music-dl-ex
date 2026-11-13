@@ -36,6 +36,57 @@ const downloadDir = ref('')
 const defaultDownloadDir = ref('data/downloads')
 const savingDir = ref(false)
 
+// Two-way sync is only meaningful in the standalone build, where the phone
+// owns the database. The native bridge runs the whole exchange.
+const native = typeof window !== 'undefined' ? window.MusicDLNative : null
+const isStandalone = Boolean(native && native.isStandalone && native.isStandalone())
+const syncing = ref(false)
+const syncForm = reactive({
+  server: localStorage.getItem('musicdl.sync.server') || '',
+  username: localStorage.getItem('musicdl.sync.user') || 'admin',
+  password: '',
+})
+
+async function runSync() {
+  if (!isStandalone || !native || !native.syncNow) return
+  const server = syncForm.server.trim()
+  if (!server) {
+    notify('请填写服务器地址', 'error')
+    return
+  }
+  syncing.value = true
+  // Let the button repaint before the blocking bridge call.
+  await new Promise((resolve) => setTimeout(resolve, 80))
+  try {
+    const raw = native.syncNow(server, syncForm.username.trim(), syncForm.password)
+    let result = {}
+    try {
+      result = JSON.parse(raw)
+    } catch {
+      result = { ok: false, error: '同步返回格式错误' }
+    }
+    if (!result.ok) {
+      notify(result.error || '同步失败', 'error')
+      syncing.value = false
+      return
+    }
+    localStorage.setItem('musicdl.sync.server', server)
+    localStorage.setItem('musicdl.sync.user', syncForm.username.trim())
+    syncForm.password = ''
+    // Reload immediately: the in-memory library is stale and a pending save
+    // would otherwise write it back over the merged result.
+    sessionStorage.setItem(
+      'musicdl.sync.message',
+      `同步完成：上传 ${result.pushed} 条，接收 ${result.received} 条`,
+    )
+    window.location.reload()
+    return
+  } catch (err) {
+    notify(err.message || '同步失败', 'error')
+    syncing.value = false
+  }
+}
+
 async function loadSettings() {
   if (!auth.isAdmin.value) return
   try {
@@ -154,6 +205,11 @@ async function copyBase() {
 }
 
 onMounted(async () => {
+  const syncMessage = sessionStorage.getItem('musicdl.sync.message')
+  if (syncMessage) {
+    sessionStorage.removeItem('musicdl.sync.message')
+    notify(syncMessage)
+  }
   await loadMeta(true)
   loadCookies()
   loadSettings()
@@ -297,7 +353,29 @@ onMounted(async () => {
       </div>
     </section>
 
-        <section class="settings-card">
+    <section v-if="isStandalone" class="settings-card">
+      <div class="card-title">
+        <i class="ri-arrow-left-right-line"></i>
+        <div>
+          <h2>与服务器同步</h2>
+          <p>双向同步 Cookie、收藏、歌单、播放队列、历史与换源记录；生成歌单以服务器为准</p>
+        </div>
+      </div>
+      <div class="import-row">
+        <input v-model="syncForm.server" type="url" placeholder="服务器地址，例如 https://music.example.com" />
+      </div>
+      <div class="import-row">
+        <input v-model="syncForm.username" type="text" placeholder="账号" autocomplete="username" />
+        <input v-model="syncForm.password" type="password" placeholder="密码" autocomplete="current-password" />
+        <button class="primary-button" :disabled="syncing" @click="runSync">
+          <i :class="syncing ? 'ri-loader-4-line spin' : 'ri-arrow-left-right-line'"></i>
+          {{ syncing ? '同步中…' : '立即同步' }}
+        </button>
+      </div>
+      <p class="hint">账号密码只用于本次连接，不会保存到设备；本地改动会一并推送到服务器。</p>
+    </section>
+
+    <section class="settings-card">
       <div class="card-title">
         <i class="ri-smartphone-line"></i>
         <div>

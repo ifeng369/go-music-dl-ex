@@ -34,6 +34,18 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+
 
 /**
  * Thin WebView shell for the MusicDL Ex web UI. The server address is asked once
@@ -49,6 +61,8 @@ public class MainActivity extends Activity {
     private WebView webView;
     private LocalProxy proxy;
     private ValueCallback<Uri[]> fileCallback;
+    /** Loopback address of the embedded core (standalone flavour only). */
+    private String embeddedBase = "";
 
     private final PlaybackService.CommandSink commandSink = new PlaybackService.CommandSink() {
         @Override
@@ -77,6 +91,118 @@ public class MainActivity extends Activity {
         public void clearMediaState() {
             PlaybackService.clear(MainActivity.this);
         }
+
+        @JavascriptInterface
+        public boolean isStandalone() {
+            return "standalone".equals(BuildConfig.FLAVOR);
+        }
+
+        /**
+         * Two-way sync with a full MusicDL server: push every local record,
+         * merge on the server, then write the merged state back locally.
+         * Generated lists are server-authoritative, so they are not uploaded.
+         */
+        @JavascriptInterface
+        public String syncNow(String serverUrl, String username, String password) {
+            try {
+                if (embeddedBase == null || embeddedBase.isEmpty()) {
+                    return syncError("当前版本没有内嵌数据库");
+                }
+                String base = normalize(serverUrl);
+                if (base.isEmpty()) {
+                    return syncError("请填写服务器地址");
+                }
+                String loginBody = new JSONObject()
+                        .put("username", username == null ? "" : username)
+                        .put("password", password == null ? "" : password)
+                        .toString();
+                JSONObject login = new JSONObject(
+                        httpRequest("POST", base + "/api/auth/login", loginBody, null));
+                String token = login.optString("token", "");
+                if (token.isEmpty()) {
+                    return syncError("登录失败：服务器没有返回会话");
+                }
+
+                String localRaw = httpRequest("GET", embeddedBase + "api/sync?since=0", null, null);
+                JSONArray localItems = new JSONObject(localRaw).optJSONArray("items");
+                JSONArray outgoing = new JSONArray();
+                if (localItems != null) {
+                    for (int i = 0; i < localItems.length(); i++) {
+                        JSONObject item = localItems.optJSONObject(i);
+                        if (item == null) {
+                            continue;
+                        }
+                        if ("recs".equals(item.optString("kind"))) {
+                            continue;
+                        }
+                        outgoing.put(item);
+                    }
+                }
+
+                String pushBody = new JSONObject().put("items", outgoing).toString();
+                JSONObject remote = new JSONObject(
+                        httpRequest("POST", base + "/api/sync", pushBody, token));
+                JSONArray remoteItems = remote.optJSONArray("items");
+                if (remoteItems == null) {
+                    remoteItems = new JSONArray();
+                }
+                String applyBody = new JSONObject().put("items", remoteItems).toString();
+                httpRequest("POST", embeddedBase + "api/sync", applyBody, null);
+
+                return new JSONObject()
+                        .put("ok", true)
+                        .put("pushed", outgoing.length())
+                        .put("received", remoteItems.length())
+                        .toString();
+            } catch (Exception err) {
+                Log.e("MusicDL", "sync failed", err);
+                return syncError(err.getMessage() == null ? err.toString() : err.getMessage());
+            }
+        }
+    }
+
+    private static String syncError(String message) {
+        try {
+            return new JSONObject().put("ok", false).put("error", message).toString();
+        } catch (Exception err) {
+            return "{\"ok\":false}";
+        }
+    }
+
+    private static String httpRequest(String method, String url, String body, String token)
+            throws IOException {
+        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        conn.setRequestMethod(method);
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(60000);
+        conn.setRequestProperty("Accept", "application/json");
+        if (token != null && !token.isEmpty()) {
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+        }
+        if (body != null) {
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            OutputStream out = conn.getOutputStream();
+            out.write(body.getBytes(StandardCharsets.UTF_8));
+            out.close();
+        }
+        int status = conn.getResponseCode();
+        InputStream stream = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
+        StringBuilder text = new StringBuilder();
+        if (stream != null) {
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                text.append(line);
+            }
+            reader.close();
+        }
+        conn.disconnect();
+        if (status >= 400) {
+            throw new IOException("HTTP " + status + ": " + text);
+        }
+        return text.toString();
     }
 
     @Override
@@ -107,6 +233,7 @@ public class MainActivity extends Activity {
             String url = (String) embedded
                     .getMethod("start", String.class)
                     .invoke(null, getFilesDir().getAbsolutePath());
+            embeddedBase = url;
             showWeb(url);
         } catch (Throwable err) {
             Log.e("MusicDL", "embedded server failed", err);

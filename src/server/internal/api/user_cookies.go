@@ -23,13 +23,21 @@ func (s *UserStore) ensureUserCookieTable() error {
 	return s.db.AutoMigrate(&appUserCookie{})
 }
 
-// UserCookies returns the cookie value per source for one account.
-func (s *UserStore) UserCookies(userID uint) (map[string]string, error) {
+func (s *UserStore) userCookieRows(userID uint) ([]appUserCookie, error) {
 	if err := s.ensureUserCookieTable(); err != nil {
 		return nil, err
 	}
 	var rows []appUserCookie
 	if err := s.db.Where("user_id = ?", userID).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// UserCookies returns the cookie value per source for one account.
+func (s *UserStore) UserCookies(userID uint) (map[string]string, error) {
+	rows, err := s.userCookieRows(userID)
+	if err != nil {
 		return nil, err
 	}
 	out := make(map[string]string, len(rows))
@@ -39,7 +47,7 @@ func (s *UserStore) UserCookies(userID uint) (map[string]string, error) {
 	return out, nil
 }
 
-func (s *UserStore) SetUserCookie(userID uint, source, value string) error {
+func (s *UserStore) setCookieRow(userID uint, source, value string) error {
 	if err := s.ensureUserCookieTable(); err != nil {
 		return err
 	}
@@ -50,12 +58,27 @@ func (s *UserStore) SetUserCookie(userID uint, source, value string) error {
 	}).Create(&row).Error
 }
 
-func (s *UserStore) DeleteUserCookie(userID uint, source string) error {
+func (s *UserStore) deleteCookieRow(userID uint, source string) error {
 	if err := s.ensureUserCookieTable(); err != nil {
 		return err
 	}
 	return s.db.Where("user_id = ? AND source = ?", userID, source).
 		Delete(&appUserCookie{}).Error
+}
+
+func (s *UserStore) SetUserCookie(userID uint, source, value string) error {
+	if err := s.setCookieRow(userID, source, value); err != nil {
+		return err
+	}
+	return s.touchSyncVersion(userID, syncKindCookies, source, nowMillis(), 0)
+}
+
+func (s *UserStore) DeleteUserCookie(userID uint, source string) error {
+	if err := s.deleteCookieRow(userID, source); err != nil {
+		return err
+	}
+	now := nowMillis()
+	return s.touchSyncVersion(userID, syncKindCookies, source, now, now)
 }
 
 func (s *UserStore) CountUserCookies() (int64, error) {

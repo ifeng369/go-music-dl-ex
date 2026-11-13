@@ -94,3 +94,18 @@ POST /api/sync                推送本地变更，服务端合并后返回合�
 | S2 | 独立版本地表 + 增量收集 |
 | S3 | 桥接方法 + 设置页表单 |
 | S4 | 自动同步与冲突可视化（可选） |
+
+## 八、已实现方案
+
+- 数据仍以 `app_user_libraries` 整份 JSON 为准，`app_sync_versions` 只保存每条记录的 `updatedAt` / `deletedAt`
+- `PUT /api/me/library` 与 Cookie 写接口会在保存时对比前后差异，自动为变化的记录打时间戳
+- `GET /api/sync?since=<ms>` 拉取变更（含墓碑），`POST /api/sync` 按 last-write-wins 合并并返回完整状态
+- 独立版设置页「与服务器同步」由 `MusicDLNative.syncNow()` 完成：拉本地 → 推服务器 → 拉服务器 → 写回本地
+- 生成歌单 `recs` 不参与上传，服务器下发的副本始终覆盖本地
+- 同步接口不进入 Cookie 作用域中间件，避免与服务端 Cookie 缓存失效逻辑互相等待
+
+## 九、使用方式
+
+独立版 APK → 设置 → 与服务器同步：填写服务器地址、账号、密码后点「立即同步」。
+同步完成后页面会自动刷新，收藏、歌单、队列、历史、换源记录与 Cookie 全部生效。
+账号密码只用于本次连接，不写入设备存储。
